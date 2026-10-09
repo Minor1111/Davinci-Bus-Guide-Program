@@ -783,7 +783,7 @@ function renderDiag(){
   if(!KEYS.DATA_GO_KR && !KEYS.KAKAO_JS) return;
   $("diag").hidden=false;
   const kst = KAKAO.state==="ok" ? ["ok","사용 가능",""] : KAKAO.state==="idle" ? ["","아직 안 씀","지도를 열면 확인해요"] : KAKAO.state==="nokey" ? ["","키 없음",""] : ["fail","안 됨",KAKAO_WHY[KAKAO.state]||""];
-  const kakaoRow = KEYS.KAKAO_JS ? `<li><span class="st ${kst[0]}">${kst[1]}</span><span>카카오맵 JavaScript SDK${kst[2]?" — "+esc(kst[2]):""}${KAKAO.state==="notiles"&&KAKAO.hosts.length?` <span class="meta">(받은 이미지 주소: ${esc(KAKAO.hosts.join(", "))})</span>`:""}</span></li>` : "";
+  const kakaoRow = KEYS.KAKAO_JS ? `<li><span class="st ${kst[0]}">${kst[1]}</span><span>카카오맵 JavaScript SDK${kst[2]?" — "+esc(kst[2]):""}${KAKAO.state==="notiles"&&KAKAO.hosts.length?` <span class="meta">(받은 이미지 주소 · 로드됨/전체: ${esc(KAKAO.hosts.join(", "))})</span>`:""}</span></li>` : "";
   const dgRows = KEYS.DATA_GO_KR ? Object.keys(DG_API).map(k=>{ const v=DG_STATUS[k];
     return `<li><span class="st ${v.state}">${v.state==="ok"?"사용 가능":v.state==="fail"?"안 됨":"아직 안 씀"}</span><span>${esc(DG_NAME[k])}${v.msg?" — "+esc(v.msg):""} <span class="meta">(오늘 ${usedCalls(k)}회)</span></span></li>`; }).join("") : "";
   $("diag-body").innerHTML = `<ul>${kakaoRow}${dgRows}</ul>
@@ -888,12 +888,18 @@ const SEARCH = { via: "", why: "" };                                      // via
 const KAKAO_WHY = {
   sdkfail: "카카오 지도 SDK를 불러오지 못했어요. JavaScript 키가 맞는지(REST 키는 안 돼요), 광고 차단 프로그램이 막지 않는지 확인하세요.",
   initfail: "카카오 지도를 시작하지 못했어요. 인터넷 연결을 확인하고 다시 열어 보세요.",
-  notiles: `카카오 지도는 불러왔지만 지도 타일을 받지 못했어요. 카카오 개발자 콘솔에서 ‘JavaScript SDK 도메인’에 ${location.origin} 이 등록됐는지, ‘카카오맵 › 사용 설정’이 ON인지 확인하세요.` };
-// 카카오 지도 타일은 mapN.daumcdn.net 계열이에요('kakaocdn'은 SDK 파일 주소라 타일이 아니에요). 로고·UI 이미지는 제외해요.
-const isKakaoTile = src => /daumcdn\.net\//.test(src) && !/daumcdn\.net\/(?:localimg|mapjsapi|roadviewjscore|dmaps)\//.test(src);
+  notiles: location.protocol==="file:"
+    ? "카카오 지도 타일을 받지 못했어요. 지금 이 페이지는 내 컴퓨터의 파일(file://)로 열려 있어요. 카카오 도메인 등록은 웹 주소만 되니, 배포한 웹 주소(GitHub Pages)로 열어 보세요."
+    : `카카오 지도는 불러왔지만 지도 타일을 받지 못했어요. 카카오 개발자 콘솔에서 ‘JavaScript SDK 도메인’에 ${location.origin} 이 등록됐는지, ‘카카오맵 › 사용 설정’이 ON인지 확인하세요.` };
+// 카카오 지도 타일 주소: 지금은 mts.kakaocdn.net(실제 화면의 연결 상태에서 확인), 예전 SDK는 mapN.daumcdn.net이에요.
+// t1.kakaocdn.net은 로고·UI 이미지라 타일이 아니에요(경로로 구분해요). SDK 파일을 읽고 추정한 주소는 틀렸어요(받아 오는 SDK 버전이 달라요).
+const isKakaoUi = src => /\/(?:mapjsapi|localimg|roadviewjscore|dmaps)\//.test(src);
+const isKakaoTile = src => /\/\/(?:mts\d*\.kakaocdn\.net|(?:map\d?|ssl)\.daumcdn\.net)\//.test(src) || (/(?:kakaocdn|daumcdn)\.net\//.test(src) && !isKakaoUi(src));
 function kakaoTilesOk(el){ return new Promise(res=>{ let n=0; const iv=setInterval(()=>{ n++;
   const imgs=[...el.querySelectorAll("img")], ok=imgs.some(i=>isKakaoTile(i.src) && i.complete && i.naturalWidth>0);
-  if(ok||n>=24){ clearInterval(iv); KAKAO.hosts=[...new Set(imgs.map(i=>{ try{ return new URL(i.src).host; }catch(e){ return ""; } }).filter(Boolean))]; res(ok); } },250); }); }
+  if(ok||n>=24){ clearInterval(iv);
+    const by={}; imgs.forEach(i=>{ try{ const h=new URL(i.src).host, o=by[h]=by[h]||{n:0,ok:0}; o.n++; if(i.complete&&i.naturalWidth>0) o.ok++; }catch(e){} });
+    KAKAO.hosts=Object.entries(by).map(([h,o])=>`${h} ${o.ok}/${o.n}`); res(ok); } },250); }); }
 function searchMode(){ return SEARCH.via==="kakao" ? "카카오맵 장소 검색" : "정류장 이름 + OpenStreetMap 장소 검색(Photon)"+(SEARCH.why?" — "+SEARCH.why:""); }
 function updateMapNote(){
   const base = MAP.kind==="kakao" ? "카카오맵" : KAKAO.state==="nokey" ? "OpenStreetMap 지도 (카카오 키를 넣으면 카카오맵과 음식점·가게 검색을 쓸 수 있어요)"
@@ -975,7 +981,9 @@ function drawBase(){ drawPlaces(); }
 
 /* 장소 검색 · 주소 */
 async function searchPlaces(q){
-  SEARCH.why = KAKAO.state==="nokey" ? "카카오 키를 넣으면 음식점·가게까지 찾아요" : "카카오맵을 쓰지 못해 대신 찾았어요";
+  SEARCH.why = KAKAO.state==="nokey" ? "카카오 키를 넣으면 음식점·가게까지 찾아요"
+    : !WEB_ORIGIN ? "파일(file://)로 열어서 카카오 장소 검색을 쓸 수 없어요. 배포한 웹 주소(GitHub Pages)로 여세요"
+    : "카카오맵을 쓰지 못해 대신 찾았어요";
   if(MAP.kind==="kakao" && WEB_ORIGIN){
     const S=kakao.maps.services.Status;
     const r = await Promise.race([ new Promise(res=>{
