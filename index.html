@@ -46,6 +46,10 @@
   .btn:disabled { opacity:.5; cursor:default; }
   .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .hint { color:var(--sub); font-size:.76rem; margin-top:8px; }
+  .kstat { font-size:.78rem; margin-top:6px; min-height:1.1em; color:var(--sub); }
+  .kstat.ok { color:#4cd08a; }
+  .kstat.bad { color:var(--err); }
+  @media (prefers-color-scheme: light) { .kstat.ok { color:#0f8a4b; } }
 
   .screens { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:5px; border:1px solid var(--line); border-radius:16px; background:var(--panel); margin-bottom:14px; }
   .screens button { border:0; background:transparent; text-align:left; padding:11px 14px; border-radius:12px; }
@@ -160,13 +164,21 @@
 
   <section class="keys" id="keyPanel" hidden>
     <h3>API 키 설정</h3>
-    <div class="hint">키는 코드에 들어가지 않고 이 기기의 브라우저(localStorage)에만 저장돼요. 키가 없어도 앱은 열려요.</div>
-    <label for="kakaoIn">카카오 JavaScript 키 (지도·장소 검색)</label>
-    <input id="kakaoIn" type="password" autocomplete="off" placeholder="없으면 OpenStreetMap으로 대신해요">
-    <div class="hint" id="kakaoHint"></div>
-    <label for="dgIn">공공데이터포털 인증키 (경기도 버스도착정보)</label>
-    <input id="dgIn" type="password" autocomplete="off" placeholder="곧 도착·몇 정류장 전 정보에 써요">
-    <div class="btns"><button class="btn" id="keySave">저장하고 다시 불러오기</button><button class="btn ghost" id="keyClear">키 지우기</button></div>
+    <div class="hint">키는 이 브라우저(localStorage)에만 저장되고, 파일이나 저장소에는 남지 않아요. 비워 두면 키 없이 쓸 수 있는 기능만 동작해요.</div>
+    <label for="kakaoIn">카카오 JavaScript 키</label>
+    <div class="hint" style="margin:0 0 6px">지도·장소 검색. developers.kakao.com › 내 애플리케이션 › 앱 설정 › 앱 › 플랫폼 키 › JavaScript 키. 같은 화면의 'JavaScript SDK 도메인'에 이 페이지 주소(<span class="origin"></span>)를 등록하고, '카카오맵 › 사용 설정'을 ON으로 해 주세요.</div>
+    <input id="kakaoIn" type="password" autocomplete="off" spellcheck="false" placeholder="예: 0a1b2c… (32자리)">
+    <div class="kstat" id="kakaoStat" aria-live="polite"></div>
+    <label for="dgIn">공공데이터포털 인증키</label>
+    <div class="hint" style="margin:0 0 6px">실시간 도착·혼잡도. data.go.kr에서 '경기도_버스도착정보 조회'와 '경기도_정류소 조회'를 활용신청한 뒤 마이페이지의 일반 인증키. 신청 직후에는 반영까지 1~2시간 걸릴 수 있어요.</div>
+    <input id="dgIn" type="password" autocomplete="off" spellcheck="false" placeholder="일반 인증키 (Decoding)">
+    <div class="kstat" id="dgStat" aria-live="polite"></div>
+    <div class="btns">
+      <button class="btn" id="keySave">저장하고 다시 불러오기</button>
+      <button class="btn ghost" id="keyShow" aria-pressed="false">키 보기</button>
+      <button class="btn ghost" id="keyTest">연결 확인</button>
+      <button class="btn ghost" id="keyClear">이 브라우저에서 키 지우기</button>
+    </div>
     <div class="hint" id="keyNote"></div>
   </section>
 
@@ -479,10 +491,13 @@ setInterval(() => { if (ui.screen === "city") refreshOpenPlaces(); }, 60000);
 /* ===== 9. 지도 (카카오 / Leaflet 공통 함수 mLabel, mLine, mFit) ===== */
 let MAPI = null, mapLoading = null;
 const loadScript = src => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("LOAD")); document.head.appendChild(s); });
+let kakaoP = null;
 function loadKakao() {
-  if (window.kakao && kakao.maps && kakao.maps.services) return Promise.resolve();
-  return loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KEYS.KAKAO_JS)}&libraries=services&autoload=false`)
-    .then(() => new Promise(res => kakao.maps.load(res)));
+  if (kakaoP) return kakaoP;
+  kakaoP = loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KEYS.KAKAO_JS)}&libraries=services&autoload=false`)
+    .then(() => new Promise(res => kakao.maps.load(res)))
+    .catch(e => { kakaoP = null; throw e; });
+  return kakaoP;
 }
 function loadLeaflet() {
   if (window.L) return Promise.resolve();
@@ -663,15 +678,50 @@ $("#btnGeo").onclick = () => {
 /* ===== 12. API 키 설정 ===== */
 function renderKeyNote() { $("#keyNote").textContent = `공공데이터 오늘 호출 ${usage().n}회 / 하루 1,000회 한도예요.`; }
 $("#kakaoIn").value = KEYS.KAKAO_JS || ""; $("#dgIn").value = KEYS.DATA_GO_KR || "";
-$("#kakaoHint").textContent = `카카오 개발자 콘솔의 JavaScript SDK 도메인에 ${location.origin} 을 등록해야 지도·검색이 동작해요.`;
+document.querySelectorAll(".origin").forEach(o => o.textContent = location.origin);
 $("#keyBtn").onclick = () => { $("#keyPanel").hidden = !$("#keyPanel").hidden; };
+$("#keyShow").onclick = () => {
+  const show = $("#kakaoIn").type === "password";
+  $("#kakaoIn").type = $("#dgIn").type = show ? "text" : "password";
+  $("#keyShow").textContent = show ? "키 숨기기" : "키 보기"; $("#keyShow").setAttribute("aria-pressed", show);
+};
+const stat = (id, ok, msg) => { const e = $(id); e.className = "kstat " + (ok === null ? "" : ok ? "ok" : "bad"); e.textContent = msg; };
+
+// 저장된 키가 실제로 동작하는지 한 번씩 호출해 보고 결과를 보여준다
+async function testKakao() {
+  if (!KEYS.KAKAO_JS) return stat("#kakaoStat", null, "키가 없어요. 지도는 OpenStreetMap, 검색은 Photon으로 동작해요.");
+  stat("#kakaoStat", null, "카카오 연결을 확인하는 중이에요…");
+  try {
+    await loadKakao();
+    const r = await kakaoSearch("중앙대학교");
+    stat("#kakaoStat", true, `✓ 연결됐어요. 카카오맵 검색 ${r.length}건을 받았어요.`);
+  } catch (e) {
+    stat("#kakaoStat", false, `✗ 연결하지 못했어요. JavaScript 키가 맞는지, 'JavaScript SDK 도메인'에 ${location.origin} 이 등록됐는지, '카카오맵 › 사용 설정'이 ON인지 확인해요. 고친 뒤에는 '저장하고 다시 불러오기'를 눌러요.`);
+  }
+}
+async function testDg() {
+  if (!KEYS.DATA_GO_KR) return stat("#dgStat", null, "키가 없어요. 곧 도착 정보는 볼 수 없어요.");
+  stat("#dgStat", null, "공공데이터 연결을 확인하는 중이에요…");
+  try {
+    const list = await dg("busstationservice/v2/getBusStationListv2", { keyword: "중앙대입구" });
+    stat("#dgStat", true, list.length ? `✓ 연결됐어요. '중앙대입구' 정류소 ${list.length}곳을 찾았어요.` : "✓ 키는 통과했는데 '중앙대입구' 검색 결과가 비어 있어요. 응답 형식이 달라졌을 수 있어요.");
+  } catch (e) {
+    const m = String(e.message);
+    stat("#dgStat", false, m === "BADFORMAT" ? "✗ 응답을 읽지 못했어요. 키를 잘못 붙여넣었거나, 두 API(버스도착정보·정류소 조회) 활용신청이 아직 승인·반영되지 않았을 수 있어요."
+      : m.startsWith("API:") ? "✗ 공공데이터 서버가 오류를 돌려줬어요: " + m.slice(4) : "✗ 네트워크 오류예요. 연결을 확인하고 '연결 확인'을 다시 눌러요.");
+  }
+}
+const testKeys = () => Promise.all([testKakao(), testDg()]);
+$("#keyTest").onclick = testKeys;
 $("#keySave").onclick = () => {
   const k = {}, a = $("#kakaoIn").value.trim(), b = $("#dgIn").value.trim();
   if (a) k.KAKAO_JS = a; if (b) k.DATA_GO_KR = b;
   store.set("dvb-keys", k); store.set("dvb-stations", {});
-  location.reload();
+  try { sessionStorage.setItem("dvb-test", "1"); } catch (e) {}
+  location.reload(); // 카카오 SDK는 키를 바꾸면 새로 불러와야 해서 페이지를 다시 열어요
 };
 $("#keyClear").onclick = () => { store.set("dvb-keys", {}); store.set("dvb-stations", {}); location.reload(); };
+try { if (sessionStorage.getItem("dvb-test")) { sessionStorage.removeItem("dvb-test"); $("#keyPanel").hidden = false; testKeys(); } } catch (e) {}
 
 /* ===== 13. 공통 갱신 ===== */
 function tick() {
