@@ -231,17 +231,6 @@ footer{font-size:12px;color:var(--muted)}
 .diag li{display:flex;gap:8px}
 .diag .st{font-weight:700;min-width:58px}
 .diag .st.ok{color:var(--c-ok)}.diag .st.fail{color:var(--c-bad)}
-.hw-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
-.seg button{border:0;background:transparent;color:var(--muted);padding:7px 14px;font-weight:600;cursor:pointer}
-.seg button + button{border-left:1px solid var(--line)}
-.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
-.hw-body{display:grid;gap:8px}
-.hw-table td,.hw-table th{text-align:center;padding:6px 6px;font-variant-numeric:tabular-nums}
-.hw-table td:first-child,.hw-table th:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
-.hw-table td.c{font-family:var(--f-mono);font-size:12px;border-left:1px solid var(--bg)}
-.hw-legend{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap}
-.hw-legend i{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
 @media (max-width:520px){
   .row{padding:11px 12px;gap:2px 10px}
   .row .big{font-size:19px}
@@ -363,22 +352,6 @@ footer{font-size:12px;color:var(--muted)}
       <div class="board" id="city-rows"></div>
       <div class="notice" id="rt-help" hidden></div>
       <details class="diag" id="diag" hidden><summary>실시간 연결 상태</summary><div id="diag-body"></div></details>
-    </section>
-
-    <section aria-labelledby="h-hw">
-      <div class="sec-head"><h2 id="h-hw">지난 배차 간격</h2><span class="sub" id="hw-range"></span></div>
-      <div class="hw-ctrl">
-        <div class="seg" role="group" aria-label="기간">
-          <button type="button" id="hw-1" data-hw="1" aria-pressed="true">1주 전</button>
-          <button type="button" id="hw-2" data-hw="2" aria-pressed="false">2주 전</button>
-          <button type="button" id="hw-3" data-hw="3" aria-pressed="false">3주 전</button>
-        </div>
-        <div class="chips" role="group" aria-label="정류장">
-          <button class="chip" id="hs-34151" data-hs="34151" aria-pressed="true">서울·평택 방면</button>
-          <button class="chip" id="hs-34157" data-hs="34157" aria-pressed="false">안성시내 방면</button>
-        </div>
-      </div>
-      <div id="hw-body" class="hw-body"></div>
     </section>
 
     <section>
@@ -514,7 +487,7 @@ function setMode(m){
   mode=m; store.set("dvb-mode",m);
   document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-selected", b.dataset.mode===m));
   $("m-shuttle").hidden = m!=="shuttle"; $("m-city").hidden = m!=="city";
-  if(m==="city"){ ensureMap(); refreshRealtime(); loadHeadways(); }
+  if(m==="city"){ ensureMap(); refreshRealtime(); }
   tick();
 }
 
@@ -716,7 +689,6 @@ async function fetchDir(pl, d, maxAge=50000){
   const c=RT.data[d.no]; if(c && Date.now()-c.at < maxAge) return c;
   const r=await arrivalsFor([pl.name, d.lat, d.lng, d.no]);
   RT.data[d.no]={at:Date.now(), items:r.items}; RT.source=r.source;
-  trackArrivals(d.no, r.items);
   return RT.data[d.no];
 }
 let rtBusy=false;
@@ -852,32 +824,6 @@ function drawPlaces(focus){
     else placeMarks.push(mLabel(p,`<div class="mstopl"><i></i>${esc(p.short)}</div>`,1));
   });
   if(focus){ const p=placeOf(curPlace); if(MAP.kind==="kakao"){ MAP.m.setLevel(3); MAP.m.setCenter(new kakao.maps.LatLng(p.lat,p.lng)); } else MAP.m.setView([p.lat,p.lng],17); }
-}
-
-/* 배차 간격 기록 (이 브라우저에 저장) */
-const LOG_STOPS = { "34151":"롯데캐슬 · 서울·평택 방면", "34157":"롯데캐슬 · 안성시내 방면" };
-const TRACK = {};
-function trackArrivals(no, items){
-  if(!LOG_STOPS[no]) return;
-  const now=Date.now(), seen=new Set();
-  items.forEach(it=>{ const r=it.route; if(!r || /통학/.test(r)) return; seen.add(r);
-    const k=no+"|"+r, prev=TRACK[k], cur={min:it.min1, plate:it.plate1||"", t:now};
-    if(prev && prev.min!=null && prev.min<=3 && now-prev.t<900000){
-      const passed=(prev.plate&&cur.plate&&prev.plate!==cur.plate) || cur.min==null || cur.min-prev.min>=3;
-      if(passed) logEvent(no, r, prev.t+Math.max(0,prev.min)*60000);
-    }
-    TRACK[k]=cur; });
-  Object.keys(TRACK).filter(k=>k.startsWith(no+"|") && !seen.has(k.split("|")[1])).forEach(k=>{ const p=TRACK[k]; delete TRACK[k];
-    if(p.min!=null && p.min<=3 && now-p.t<900000) logEvent(no, k.split("|")[1], p.t+Math.max(0,p.min)*60000); });
-}
-function logEvent(no, route, ts){
-  const log=jget("dvb-log",[]); log.push([ts,no,route]);
-  const cut=Date.now()-28*86400000; jset("dvb-log", log.filter(x=>x[0]>=cut));
-}
-function logLoop(){ // 길찾기 화면이 아니어도, 페이지가 열려 있으면 3분마다 기록 정류장 확인
-  if(!KEYS.DATA_GO_KR || document.hidden) return;
-  const h=seoulNow().h; if(h<5) return;
-  const pl=placeOf("lotte"); pl.dirs.filter(d=>LOG_STOPS[d.no]).forEach(d=>{ if(usedCalls("gbis_arrival")>KEYS.DAILY_LIMIT*0.85) return; fetchDir(pl,d,170000).catch(()=>{}); });
 }
 
 /* ======================= 노선 정보 ======================= */
@@ -1170,42 +1116,6 @@ $("plan-form").addEventListener("submit", async e=>{
 });
 $("from").addEventListener("change",()=>{ if(curDest) runPlan(curDest); });
 
-/* ======================= 지난 배차 간격 ======================= */
-let hwWeeks=1, hwStop="34151";
-function planIv(no){ const id=Object.keys(LINE_DATA.L).find(k=>LINE_DATA.L[k].no===no); return id&&META[id]?META[id].iv:""; }
-function hwColor(v){ if(v==null) return ""; const t=Math.max(0,Math.min(1,(v-5)/55)); return `background:hsl(${140-140*t} 60% 50% / .28)`; }
-function headways(weeks){
-  const DAY=86400000, n=seoulNow(), today=Date.parse(n.ymd+"T00:00:00+09:00");
-  const from=today-7*weeks*DAY+DAY, to=today-7*(weeks-1)*DAY+DAY; // 1주 전 = 오늘 포함 최근 7일
-  const log=jget("dvb-log",[]), ev={}, days=new Set(); let since=null;
-  log.forEach(([ts,stop,route])=>{ since = since==null||ts<since ? ts : since; if(ts<from||ts>=to) return;
-    const d=new Date(ts+9*3600000), day=d.toISOString().slice(0,10); days.add(day);
-    (ev[stop+"|"+route+"|"+day]=ev[stop+"|"+route+"|"+day]||[]).push(d.getUTCHours()*60+d.getUTCMinutes()); });
-  const out={};
-  Object.entries(ev).forEach(([k,mins])=>{ const [stop,route]=k.split("|"); mins.sort((a,b)=>a-b);
-    for(let i=1;i<mins.length;i++){ const gap=mins[i]-mins[i-1]; if(gap<2||gap>240) continue;
-      const t=((out[stop]=out[stop]||{})[route]=out[stop][route]||{hours:{},all:[]}); (t.hours[Math.floor(mins[i-1]/60)]=t.hours[Math.floor(mins[i-1]/60)]||[]).push(gap); t.all.push(gap); } });
-  Object.values(out).forEach(rs=>Object.values(rs).forEach(t=>{ Object.keys(t.hours).forEach(h=>{ const v=t.hours[h]; t.hours[h]=v.reduce((a,b)=>a+b,0)/v.length; }); t.avg=t.all.reduce((a,b)=>a+b,0)/t.all.length; t.n=t.all.length+1; }));
-  const f=ts=>{ const d=new Date(ts+9*3600000); return `${d.getUTCMonth()+1}/${d.getUTCDate()}`; };
-  return { range:`${f(from)} ~ ${f(to-DAY)}`, days:days.size, since, data:out };
-}
-function loadHeadways(){
-  const body=$("hw-body");
-  document.querySelectorAll("[data-hw]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.hw===hwWeeks));
-  document.querySelectorAll("[data-hs]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.hs===hwStop));
-  const j=headways(hwWeeks);
-  $("hw-range").textContent=`${j.range} · 기록된 날 ${j.days}일`;
-  const data=j.data[hwStop]||{}, routes=Object.keys(data).sort((a,b)=>data[b].n-data[a].n);
-  if(!routes.length){
-    const s=j.since?new Date(j.since+9*3600000).toISOString().slice(0,10):null;
-    body.innerHTML=`<div class="card"><b>이 기간에는 기록이 없어요.</b><p class="meta">${s?`기록은 ${s}부터 있어요. `:""}이 파일이 브라우저에 열려 있는 동안 3분마다 롯데캐슬 정류장 도착을 이 브라우저에 기록해요. 과거 기록은 공공 API로 받을 수 없어서 지금부터 쌓이고, 창을 닫아 둔 시간은 비어요.</p></div>`; return; }
-  const hours=[]; for(let h=5;h<=23;h++) hours.push(h);
-  body.innerHTML=`<div class="tbl-wrap card" style="padding:0"><table class="hw-table"><tr><th>노선</th><th>평균</th><th>계획</th>${hours.map(h=>`<th>${h}시</th>`).join("")}</tr>
-    ${routes.map(r=>{ const d=data[r]; return `<tr><td><span class="ln ${lineKind(r)}">${esc(r)}</span></td><td class="mono"><b>${d.avg.toFixed(1)}분</b></td><td class="meta">${esc(planIv(r)||"-")}</td>
-      ${hours.map(h=>{ const v=d.hours[h]; return `<td class="c" style="${hwColor(v)}">${v!=null?Math.round(v):""}</td>`; }).join("")}</tr>`; }).join("")}</table></div>
-  <div class="hw-legend"><span><i style="${hwColor(5)}"></i>짧음</span><span><i style="${hwColor(30)}"></i>보통</span><span><i style="${hwColor(60)}"></i>긺</span><span>칸 숫자는 그 시간대 평균 배차(분) · 실제 도착 기록 기준</span></div>`;
-}
-
 /* ======================= API 키 설정 ======================= */
 function openKeys(open){
   const p=$("key-panel"); p.hidden=!open; $("key-open").setAttribute("aria-expanded",open);
@@ -1252,8 +1162,6 @@ document.addEventListener("click",e=>{
   if(t.dataset.pick){ document.querySelectorAll("[data-pick]").forEach(b=>b.setAttribute("aria-pressed",b===t)); runPlan(picks[+t.dataset.pick]); }
   if(t.dataset.opt){ drawOption(+t.dataset.opt); }
   if(t.dataset.focus){ ensureMap().then(()=>focusStop(t.dataset.focus)); }
-  if(t.dataset.hw){ hwWeeks=+t.dataset.hw; loadHeadways(); }
-  if(t.dataset.hs){ hwStop=t.dataset.hs; loadHeadways(); }
   if(t.classList.contains("copy")){ const v=t.dataset.c, done=()=>{t.textContent="복사됨"; setTimeout(()=>t.textContent="복사",1500)};
     try{ navigator.clipboard.writeText(v).then(done,()=>sel(t)); }catch(_){ sel(t); } }
 });
@@ -1266,7 +1174,7 @@ renderTabs(); renderShuttleStops(); renderLineList();
 setMode(mode);
 setInterval(tick, 15000);
 setInterval(()=>{ if(mode==="city") refreshRealtime(); }, REFRESH_SEC*1000);
-setInterval(logLoop, 180000); setTimeout(logLoop, 4000);
+try{ localStorage.removeItem("dvb-log"); }catch(e){}   // 지난 배차 간격 기능을 없앴어요. 예전에 쌓인 기록은 지워요.
 </script>
 
 </body>
