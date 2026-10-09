@@ -2,738 +2,1236 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>다빈치 버스</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-  :root {
-    --bg:#0b1020; --panel:#111a2e; --deep:#070b17; --line:#1f2b46; --text:#f3f6fc; --sub:#9fb0cf; --dim:#566383;
-    --accent:#8fa8ff; --accent-ink:#0b1020; --badge:#3b66d6; --badge-ink:#fff; --tile:#e8ecf6; --tile-ink:#0b1020;
-    --warn-bg:#3a2410; --warn-ink:#f5a54a; --info-bg:#14233f; --info-ink:#9fc0ff; --err:#ff9d7a;
-    --route-foot:#4f8cff; --route-car:#ff9f43;
-  }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg:#f1f4fa; --panel:#ffffff; --deep:#f6f8fc; --line:#dfe5f1; --text:#141a2b; --sub:#5a6785; --dim:#a3adc4;
-      --accent:#1f4fd8; --accent-ink:#ffffff; --badge:#2f5bd0; --tile:#141a2b; --tile-ink:#ffffff;
-      --warn-bg:#fff1dc; --warn-ink:#9a5200; --info-bg:#e5eeff; --info-ink:#1f4fd8; --err:#c2410c;
-      --route-foot:#1f4fd8; --route-car:#d97706;
-    }
-  }
-  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  body { margin:0; background:var(--bg); color:var(--text); line-height:1.45;
-    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; }
-  .wrap { max-width:760px; margin:0 auto; padding:18px 16px 48px; }
-  .col { max-width:440px; margin:0 auto; }
-  .col.wide { max-width:600px; }
-  button { font:inherit; color:inherit; cursor:pointer; }
-  a { color:var(--accent); }
-  [hidden] { display:none !important; }
+/* Layout: one mode switch (학교 셔틀 / 마을·시내·직행) decides everything below it.
+   Each mode: a live board first (dark, scannable), then the one tool that mode needs. */
+:root{
+  --bg:#F3F5F9; --surface:#FFFFFF; --ink:#13203A; --muted:#5A6680; --line:#DAE0EA;
+  --accent:#1B4FA8; --accent-soft:#E6EDF9; --past:#A3ACBD;
+  --board:#0E1A30; --board-line:#22314F; --board-ink:#E8EDF7; --board-muted:#8C9AB6; --signal:#FFB21A;
+  --gen:#1E8A50; --dir:#D23A30; --int:#6D4BC8; --shut:#1B4FA8;
+  --c-ok:#1F8A4C; --c-mid:#B7791F; --c-bad:#C53030;
+  --c-ok-b:#3DDC84; --c-mid-b:#FFC24D; --c-bad-b:#FF6B6B;
+  --warn:#B4570B; --warn-soft:#FDF0E2;
+  --f-display:"Gothic A1","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B1220; --surface:#121B2D; --ink:#E6EBF4; --muted:#97A3BA; --line:#25324A;
+  --accent:#8DB0F3; --accent-soft:#1A2843; --past:#56627A; --board:#060C18; --board-line:#1C2942;
+  --gen:#2E9E62; --dir:#D9473E; --int:#7E5DD6; --shut:#3A68C4;
+  --c-ok:#4CC17E; --c-mid:#E2A945; --c-bad:#F07070;
+  --warn:#F0A35A; --warn-soft:#2E2113; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1220; --surface:#121B2D; --ink:#E6EBF4; --muted:#97A3BA; --line:#25324A;
+  --accent:#8DB0F3; --accent-soft:#1A2843; --past:#56627A; --board:#060C18; --board-line:#1C2942;
+  --gen:#2E9E62; --dir:#D9473E; --int:#7E5DD6; --shut:#3A68C4;
+  --c-ok:#4CC17E; --c-mid:#E2A945; --c-bad:#F07070;
+  --warn:#F0A35A; --warn-soft:#2E2113; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;margin:0}
+.wrap{max-width:920px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:grid;gap:22px}
+.wrap > *{min-width:0}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+button{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
-  header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:16px; }
-  h1 { font-size:1.7rem; margin:0; letter-spacing:-.03em; }
-  .subtitle { color:var(--sub); font-size:.78rem; margin-top:2px; }
-  .clock { text-align:right; }
-  .clock b { display:block; font:700 1.6rem/1.1 ui-monospace,"Cascadia Mono",Consolas,monospace; letter-spacing:.04em; }
-  .clock span { display:block; color:var(--sub); font-size:.72rem; margin-bottom:6px; }
-  .keybtn { border:1px solid var(--line); background:var(--panel); border-radius:8px; padding:4px 10px; font-size:.72rem; font-weight:700; }
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.hd-right{display:grid;justify-items:end;gap:6px}
+.key-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer}
+.key-panel{gap:10px}
+.key-form{display:grid;gap:12px}
+.key-form label{display:grid;gap:4px;font-size:14px}
+.key-form label span{font-size:12px;color:var(--muted)}
+.key-form input{font:inherit;font-family:var(--f-mono);font-size:14px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.key-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.key-act .go{border:0;background:var(--accent);color:var(--surface);border-radius:10px;padding:9px 16px;font-weight:700;cursor:pointer}
+header.top h1{font-size:clamp(24px,5.5vw,30px);font-weight:800;letter-spacing:-.01em}
+header.top p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.clock{text-align:right;flex:none}
+.clock .t{font-size:26px;font-weight:700;line-height:1}
+.clock .d{font-size:12px;color:var(--muted)}
 
-  .keys { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:14px; }
-  .keys h3 { margin:0 0 4px; font-size:.95rem; }
-  .keys label { display:block; font-size:.8rem; color:var(--sub); margin:12px 0 4px; }
-  .keys input, .inp { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--deep); color:var(--text); font:inherit; font-size:.92rem; }
-  .btn { border:0; background:var(--accent); color:var(--accent-ink); padding:10px 14px; border-radius:10px; font-weight:700; }
-  .btn.ghost { background:transparent; border:1px solid var(--line); color:var(--text); font-weight:600; }
-  .btn:disabled { opacity:.5; cursor:default; }
-  .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-  .hint { color:var(--sub); font-size:.76rem; margin-top:8px; }
-  .kstat { font-size:.78rem; margin-top:6px; min-height:1.1em; color:var(--sub); }
-  .kstat.ok { color:#4cd08a; }
-  .kstat.bad { color:var(--err); }
-  @media (prefers-color-scheme: light) { .kstat.ok { color:#0f8a4b; } }
+/* mode switch */
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px}
+.mode button{border:0;background:transparent;color:var(--muted);border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;display:grid;gap:1px}
+.mode button b{font-family:var(--f-display);font-size:16px;font-weight:800;color:var(--ink)}
+.mode button span{font-size:12px}
+.mode button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.mode button[aria-selected="true"] b{color:var(--bg)}
 
-  .screens { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:5px; border:1px solid var(--line); border-radius:16px; background:var(--panel); margin-bottom:14px; }
-  .screens button { border:0; background:transparent; text-align:left; padding:11px 14px; border-radius:12px; }
-  .screens button b { display:block; font-size:.98rem; }
-  .screens button span { display:block; font-size:.7rem; color:var(--sub); margin-top:1px; }
-  .screens button[aria-selected="true"] { background:var(--tile); color:var(--tile-ink); }
-  .screens button[aria-selected="true"] span { color:#4b5878; }
+section{display:grid;gap:12px}
+.sec-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px}
+.sec-head h2{font-size:19px;font-weight:800}
+.sec-head .sub{font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 13px;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.notice{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 14px;font-size:14px}
 
-  .banner { border-radius:10px; padding:11px 14px; font-size:.84rem; margin-bottom:18px; background:var(--warn-bg); color:var(--warn-ink); }
-  .banner.info { background:var(--info-bg); color:var(--info-ink); }
+/* board */
+.board{background:var(--board);color:var(--board-ink);border-radius:14px;overflow:hidden}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--board-line)}
+.row:last-child{border-bottom:0}
+.ln{display:inline-flex;align-items:center;justify-content:center;min-width:46px;padding:3px 7px;border-radius:6px;font-family:var(--f-mono);font-weight:700;font-size:13px;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ln.gen{background:var(--gen)}.ln.dir{background:var(--dir)}.ln.int{background:var(--int)}.ln.shut{background:var(--shut);font-family:var(--f-body);font-size:12px}
+.row .what{min-width:0}
+.row .what b{display:block;font-weight:600;font-size:15px;line-height:1.3}
+.row .what span{display:block;font-size:12px;color:var(--board-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .when{text-align:right;display:grid;justify-items:end;gap:2px}
+.row .big{font-family:var(--f-mono);font-size:22px;font-weight:700;color:var(--signal);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.row .big .txt{font-family:var(--f-body);font-size:15px}
+.row .small{font-size:11px;color:var(--board-muted);white-space:nowrap}
+.row.off .big{color:var(--board-muted);font-family:var(--f-body);font-size:14px;font-weight:500}
+.soon{display:inline-block;background:var(--signal);color:var(--board);font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px}
+.crowd{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;border:1px solid currentColor}
+.board .crowd.ok{color:var(--c-ok-b)}.board .crowd.mid{color:var(--c-mid-b)}.board .crowd.bad{color:var(--c-bad-b)}
+.crowd.ok{color:var(--c-ok)}.crowd.mid{color:var(--c-mid)}.crowd.bad{color:var(--c-bad)}
+.stop-grp + .stop-grp{border-top:6px solid var(--bg)}
+.stop-head{display:grid;gap:3px;padding:12px 16px 10px;background:var(--board-line);border-bottom:1px solid var(--board-line)}
+.sh-main{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.sh-main b{font-family:var(--f-display);font-size:16px;font-weight:800}
+.sh-no{font-family:var(--f-mono);font-size:12px;color:var(--signal);border:1px solid var(--signal);border-radius:4px;padding:0 5px}
+.sh-sub{font-size:12px;color:var(--board-muted)}
+.sh-sub b{color:var(--board-ink);font-weight:600}
+.sh-act{display:flex;gap:12px;align-items:center;margin-top:2px}
+.sh-btn{border:1px solid var(--board-muted);background:transparent;color:var(--board-ink);border-radius:6px;font-size:12px;padding:2px 9px;cursor:pointer}
+.sh-act a{font-size:12px;color:var(--board-ink);text-decoration:none}
+.board-empty{padding:16px;color:var(--board-muted);font-size:14px}
+.rt-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rf-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.rf-btn:hover{border-color:var(--accent);color:var(--accent)}
+.rf-btn[disabled]{opacity:.6;cursor:default}
+.rf-btn.spin svg{animation:rfspin .8s linear infinite}
+@keyframes rfspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.rf-btn.spin svg{animation:none}}
+.rt-state{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--past)}
+.dot.on{background:var(--c-ok)}
 
-  .sec-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:6px 0 10px; }
-  .sec-head h2 { margin:0; font-size:1.1rem; letter-spacing:-.02em; }
-  .sec-head span { color:var(--info-ink); font-size:.7rem; }
-  .pills { display:flex; gap:7px; flex-wrap:wrap; margin-bottom:12px; }
-  .pill { border:1px solid var(--line); background:var(--panel); border-radius:999px; padding:6px 13px; font-size:.8rem; font-weight:600; }
-  .pill[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+/* timetables */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;background:none;color:var(--muted);font-weight:600;padding:10px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--accent);border-color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;padding:16px;display:grid;gap:18px}
+.dirs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:18px}
+.dir{min-width:0}
+.dir h3{font-size:15px;margin-bottom:2px}
+.path{font-size:13px;color:var(--muted);margin:0 0 8px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td.t{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-weight:500}
+tr.past td{color:var(--past)}
+tr.next td{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.dash{color:var(--past)}
+.fn{font-size:12px;color:var(--warn)}
+.meta{font-size:13px;color:var(--muted);margin:0}
 
-  .list { background:var(--deep); border-radius:14px; overflow:hidden; margin-bottom:26px; }
-  .li { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--line); }
-  .li:last-child { border-bottom:0; }
-  .badge { background:var(--badge); color:var(--badge-ink); border-radius:6px; padding:3px 8px; font-size:.68rem; font-weight:700; white-space:nowrap; }
-  .li .m { flex:1; min-width:0; }
-  .li .t { font-weight:700; font-size:.95rem; }
-  .li .s { color:var(--sub); font-size:.7rem; }
-  .li .r { text-align:right; font-size:.82rem; color:var(--sub); white-space:nowrap; }
-  .li .r b { display:block; color:var(--text); font:700 1rem ui-monospace,Consolas,monospace; }
-  .li.go .r b { color:var(--accent); }
+/* cards / lists */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px}
+.card h3{font-size:15px}
+.card ol,.card ul{margin:0;padding-left:20px;font-size:14px;display:grid;gap:4px}
+.stoplist{display:grid;gap:0}
+.stoplist div{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.stoplist div:last-child{border-bottom:0}
+.stoplist small{display:block;color:var(--muted);font-size:12px}
+.stoplist a{font-size:13px;white-space:nowrap;text-decoration:none;font-weight:600}
+.copy{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;font-size:12px;padding:1px 8px;cursor:pointer;margin-left:6px}
 
-  .tabs { display:flex; gap:18px; border-bottom:1px solid var(--line); overflow-x:auto; }
-  .tabs button { border:0; background:transparent; padding:8px 0 9px; font-weight:700; font-size:.86rem; color:var(--sub); border-bottom:2px solid transparent; white-space:nowrap; }
-  .tabs button[aria-selected="true"] { color:var(--accent); border-bottom-color:var(--accent); }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:0 0 14px 14px; padding:14px; margin-bottom:26px; }
-  .card.r { border-radius:14px; }
-  .dayp { display:flex; gap:7px; margin-bottom:12px; }
-  .dayp button { border:1px solid var(--line); background:var(--deep); border-radius:999px; padding:6px 13px; font-size:.8rem; font-weight:600; }
-  .dayp button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
-  h3.rt { margin:14px 0 2px; font-size:.92rem; }
-  h3.rt:first-of-type { margin-top:0; }
-  .path { color:var(--sub); font-size:.74rem; margin-bottom:6px; }
-  table { width:100%; border-collapse:collapse; font-size:.84rem; }
-  th { text-align:left; color:var(--sub); font-weight:600; font-size:.74rem; padding:8px 6px; border-bottom:1px solid var(--line); }
-  td { padding:11px 6px; border-bottom:1px solid var(--line); color:var(--sub); }
-  td.tm { font-family:ui-monospace,Consolas,monospace; font-weight:600; }
-  tr.past td.tm { color:var(--dim); }
-  tr.past td { color:var(--dim); }
-  tr.next td.tm { color:var(--accent); }
-  tr.next td { color:var(--text); }
-  td.off { color:var(--dim); }
-  th.sel, td.sel { color:var(--text); }
-  .warnmark { color:var(--warn-ink); }
-  .tgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:6px; }
-  .tg { text-align:center; padding:8px 0; border:1px solid var(--line); border-radius:8px; font:600 .86rem ui-monospace,Consolas,monospace; color:var(--sub); }
-  .tg.past { color:var(--dim); }
-  .tg.next { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
-  .tg.cur { color:var(--text); }
-
-  .gcard { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:12px; }
-  .gcard h3 { margin:0 0 6px; font-size:1.02rem; }
-  .stop { display:flex; justify-content:space-between; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); }
-  .stop:last-child { border-bottom:0; }
-  .stop b { display:block; font-size:.88rem; }
-  .stop span { color:var(--sub); font-size:.74rem; }
-  .stop a { font-size:.78rem; font-weight:700; text-decoration:none; white-space:nowrap; }
-  ol.steps { margin:6px 0 8px; padding-left:20px; font-weight:600; font-size:.9rem; }
-  ol.steps li { margin:4px 0; }
-  .contact { display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-size:.8rem; color:var(--sub); margin-top:8px; }
-  .contact code { font:600 .8rem ui-monospace,Consolas,monospace; color:var(--text); }
-  .copy { border:1px solid var(--line); background:var(--deep); border-radius:6px; padding:2px 8px; font-size:.7rem; font-weight:700; }
-  .src { color:var(--sub); font-size:.7rem; margin-top:24px; line-height:1.6; }
-
-  /* 시내·직행 화면 */
-  details.place { background:var(--panel); border:1px solid var(--line); border-radius:12px; margin-bottom:8px; }
-  details.place > summary { list-style:none; cursor:pointer; padding:13px 14px; display:flex; justify-content:space-between; gap:8px; align-items:center; }
-  details.place > summary::-webkit-details-marker { display:none; }
-  details.place[open] > summary { border-bottom:1px solid var(--line); }
-  .pn { font-weight:700; font-size:.92rem; }
-  .ps { color:var(--sub); font-size:.72rem; }
-  .pbody { padding:10px 14px 12px; }
-  .dir { font-weight:700; font-size:.82rem; margin:10px 0 4px; color:var(--accent); }
-  .dir:first-child { margin-top:0; }
-  .arr { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--line); font-size:.88rem; }
-  .arr .l small, .arr .r small { display:block; color:var(--sub); font-size:.72rem; }
-  .arr .r { text-align:right; }
-  .arr .r b { color:var(--accent); }
-  .msg { color:var(--sub); font-size:.84rem; }
-  .msg.err { color:var(--err); }
-  .frow { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:8px; }
-  .qrow { display:flex; gap:6px; flex-wrap:wrap; margin:4px 0 10px; }
-  .res { background:var(--deep); border-radius:12px; overflow:hidden; margin:8px 0; }
-  .res .li .t { font-size:.88rem; }
-  .res .li .r a, .res .li .r button { font-size:.72rem; }
-  .rcards { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0; }
-  .rc { border:1px solid var(--line); background:var(--deep); border-radius:12px; padding:10px; text-align:left; }
-  .rc[aria-pressed="true"] { border-color:var(--accent); }
-  .rc small { display:block; color:var(--sub); font-size:.7rem; }
-  .rc b { font-size:.98rem; }
-  #map { height:300px; border-radius:12px; border:1px solid var(--line); overflow:hidden; background:var(--deep); }
-  .mk { background:var(--tile); color:var(--tile-ink); border-radius:8px; padding:3px 8px; font-size:.72rem; font-weight:700; white-space:nowrap; box-shadow:0 1px 4px rgba(0,0,0,.4); transform:translate(-50%,-100%); position:relative; }
-  .leaflet-div-icon.mkw { background:none; border:0; }
+/* planner */
+.plan-form input,.plan-form select{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+.plan-form .go{border:0;background:var(--accent);color:var(--surface);border-radius:10px;padding:0 18px;font-weight:700;cursor:pointer}
+.plan-from{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.plan-from select{flex:1;font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.picks{display:flex;flex-wrap:wrap;gap:6px}
+.picks .chip small{color:inherit;opacity:.7;margin-left:4px}
+.mapnote{font-size:12px;color:var(--muted);margin:0}
+.results{display:grid;gap:8px}
+.res{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;color:var(--ink);width:100%}
+.res[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.rank{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:700;font-size:13px;font-family:var(--f-mono)}
+.res .nm{font-weight:700;font-size:15px}
+.res .steps{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:4px}
+.res .steps .ln{min-width:0;font-size:12px;padding:1px 6px}
+.res .tot{text-align:right}
+.res .tot b{font-family:var(--f-mono);font-size:20px;display:block;font-variant-numeric:tabular-nums}
+.res .tot span{font-size:11px;color:var(--muted)}
+.res .alt{grid-column:2 / -1;font-size:12px;color:var(--muted)}
+.res .links{grid-column:2 / -1;display:flex;gap:12px;font-size:12px}
+.res .links a{font-weight:600;text-decoration:none}
+.tag-est{font-size:11px;color:var(--muted);border:1px dashed var(--line);border-radius:4px;padding:0 5px}
+details.lines summary{cursor:pointer;font-weight:700;font-family:var(--f-display);font-size:16px}
+.crow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.crow b{font-weight:600;font-size:14px;display:block}
+.crow span{font-size:12px;color:var(--muted)}
+.crow a{font-size:12px;white-space:nowrap;font-weight:600;text-decoration:none}
+footer{font-size:12px;color:var(--muted)}
+.gate{background:var(--warn-soft);color:var(--ink);border-radius:12px;padding:14px 16px;display:grid;gap:6px;font-size:14px}
+.gate span{color:var(--muted)}
+.gate .btn{justify-self:start;background:var(--accent);color:var(--surface);border-radius:8px;padding:8px 14px;font-weight:700;text-decoration:none}
+#plan-sec.disabled #map-kind,#plan-sec.disabled .mapwrap,#plan-sec.disabled #picks,#plan-sec.disabled #results{display:none}
+.plan-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.od{display:grid;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.od-row{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;padding:0 10px}
+.od-row + .od-row{border-top:1px solid var(--line)}
+.od-tag{font-size:11px;font-weight:700;border-radius:4px;padding:2px 6px;color:#fff}
+.od-tag.from{background:#13203A}.od-tag.to{background:#C53030}
+.od select,.od input{border:0;background:transparent;color:var(--ink);font:inherit;font-size:16px;padding:12px 2px;width:100%;outline-offset:-2px}
+.picks{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.pick{flex:none;max-width:220px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:7px 11px;cursor:pointer;display:grid}
+.pick b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick span{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pick[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mapwrap{position:relative}
+#map{width:100%;height:min(58vh,520px);min-height:320px;border-radius:14px;border:1px solid var(--line);background:var(--surface)}
+.map-hint{position:absolute;left:10px;bottom:30px;z-index:2;background:rgba(19,32,58,.82);color:#fff;font-size:12px;border-radius:8px;padding:4px 9px;pointer-events:none}
+.mtag{color:#fff;font:700 12px/1 "IBM Plex Sans KR",sans-serif;padding:5px 8px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.35);white-space:nowrap}
+.mstopl{display:flex;align-items:center;gap:4px;background:#fff;color:#1B4FA8;border:1px solid #1B4FA8;border-radius:10px;padding:2px 7px 2px 4px;font:700 11px/1.2 "IBM Plex Sans KR",sans-serif;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.mstopl.on{background:#1B4FA8;color:#fff}.mstopl.on i{background:#fff}
+.sh-dir{font-size:11px;font-weight:700;color:var(--board);background:var(--board-muted);border-radius:4px;padding:0 6px}
+#place-chips .chip small{font-size:10px;opacity:.75;margin-left:2px}
+.mstopl i{width:8px;height:8px;border-radius:50%;background:#1B4FA8;display:inline-block}
+.mstop{width:10px;height:10px;border-radius:50%;background:#fff;border:3px solid #1B4FA8;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+.mpop{background:#fff;color:#13203A;border-radius:10px;padding:8px;box-shadow:0 2px 8px rgba(0,0,0,.3);display:grid;gap:6px;font:13px "IBM Plex Sans KR",sans-serif;min-width:170px}
+.mpop button{border:1px solid #DAE0EA;background:#F3F5F9;border-radius:6px;padding:6px;cursor:pointer;font:inherit;font-weight:600}
+.res-group{display:grid;gap:8px;margin-top:6px}
+.res-group h3{font-size:15px;display:flex;gap:8px;align-items:center}
+.res-group.two{grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))}
+.res .body{min-width:0}
+.legs{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.leg{font-size:12px;font-weight:700;color:#fff;border-radius:5px;padding:2px 7px;white-space:nowrap}
+.leg.walk{background:transparent;color:var(--muted);border:1px dashed var(--line);font-weight:500}
+.leg.gen{background:var(--gen)}.leg.dir{background:var(--dir)}.leg.blue{background:#3A68C4}.leg.other{background:var(--int)}
+.arr{color:var(--past);font-size:12px}
+.res .sub{font-size:12px;color:var(--muted);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.rtline{display:inline-flex;gap:5px;align-items:center;color:var(--ink);font-weight:600}
+.rtline .soon{animation:none}
+.ico{width:40px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;background:var(--muted)}
+.ico.taxi{background:#E8A317;color:#13203A}.ico.walk{background:var(--ink);color:var(--bg)}
+.res.fail{cursor:default;opacity:.8}
+.lf{position:absolute;transform:translate(-50%,-115%);white-space:nowrap}.lf-c{transform:translate(-50%,-50%)}
+.leaflet-container{font:inherit}
+.mbus{background:#fff;border:2px solid #13203A;color:#13203A;font:700 11px/1 "JetBrains Mono",monospace;border-radius:10px;padding:3px 6px;box-shadow:0 1px 3px rgba(0,0,0,.35);white-space:nowrap}
+.mbus.gen{border-color:#1E8A50;color:#1E8A50}.mbus.dir{border-color:#D23A30;color:#D23A30}
+.diag{font-size:13px;color:var(--muted)}
+.diag summary{cursor:pointer}
+.diag ul{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:4px}
+.diag li{display:flex;gap:8px}
+.diag .st{font-weight:700;min-width:58px}
+.diag .st.ok{color:var(--c-ok)}.diag .st.fail{color:var(--c-bad)}
+.hw-ctrl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;color:var(--muted);padding:7px 14px;font-weight:600;cursor:pointer}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.hw-body{display:grid;gap:8px}
+.hw-table td,.hw-table th{text-align:center;padding:6px 6px;font-variant-numeric:tabular-nums}
+.hw-table td:first-child,.hw-table th:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+.hw-table td.c{font-family:var(--f-mono);font-size:12px;border-left:1px solid var(--bg)}
+.hw-legend{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.hw-legend i{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+@media (max-width:520px){
+  .row{padding:11px 12px;gap:2px 10px}
+  .row .big{font-size:19px}
+  .plan-form{grid-template-columns:1fr}
+  .plan-form .go{padding:11px}
+}
+@media (prefers-reduced-motion:no-preference){ .soon{animation:pulse 1.6s ease-in-out infinite} @keyframes pulse{50%{opacity:.55}} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
+  <header class="top">
     <div>
       <h1>다빈치 버스</h1>
-      <div class="subtitle">중앙대학교 다빈치캠퍼스</div>
+      <p>중앙대학교 다빈치캠퍼스</p>
     </div>
-    <div class="clock"><b id="clockT">--:--</b><span id="clockD"></span><button class="keybtn" id="keyBtn">API 키 설정</button></div>
+    <div class="hd-right"><div class="clock"><div class="t mono" id="clk">--:--</div><div class="d" id="dt"></div></div>
+      <button type="button" class="key-btn" id="key-open" aria-expanded="false" aria-controls="key-panel">API 키 설정</button></div>
   </header>
 
-  <section class="keys" id="keyPanel" hidden>
-    <h3>API 키 설정</h3>
-    <div class="hint">키는 이 브라우저(localStorage)에만 저장되고, 파일이나 저장소에는 남지 않아요. 비워 두면 키 없이 쓸 수 있는 기능만 동작해요.</div>
-    <label for="kakaoIn">카카오 JavaScript 키</label>
-    <div class="hint" style="margin:0 0 6px">지도·장소 검색. developers.kakao.com › 내 애플리케이션 › 앱 설정 › 앱 › 플랫폼 키 › JavaScript 키. 같은 화면의 'JavaScript SDK 도메인'에 이 페이지 주소(<span class="origin"></span>)를 등록하고, '카카오맵 › 사용 설정'을 ON으로 해 주세요.</div>
-    <input id="kakaoIn" type="password" autocomplete="off" spellcheck="false" placeholder="예: 0a1b2c… (32자리)">
-    <div class="kstat" id="kakaoStat" aria-live="polite"></div>
-    <label for="dgIn">공공데이터포털 인증키</label>
-    <div class="hint" style="margin:0 0 6px">실시간 도착·혼잡도. data.go.kr에서 '경기도_버스도착정보 조회'와 '경기도_정류소 조회'를 활용신청한 뒤 마이페이지의 일반 인증키. 신청 직후에는 반영까지 1~2시간 걸릴 수 있어요.</div>
-    <input id="dgIn" type="password" autocomplete="off" spellcheck="false" placeholder="일반 인증키 (Decoding)">
-    <div class="kstat" id="dgStat" aria-live="polite"></div>
-    <div class="btns">
-      <button class="btn" id="keySave">저장하고 다시 불러오기</button>
-      <button class="btn ghost" id="keyShow" aria-pressed="false">키 보기</button>
-      <button class="btn ghost" id="keyTest">연결 확인</button>
-      <button class="btn ghost" id="keyClear">이 브라우저에서 키 지우기</button>
-    </div>
-    <div class="hint" id="keyNote"></div>
+  <section class="card key-panel" id="key-panel" hidden aria-labelledby="h-key">
+    <h2 id="h-key" style="font-size:17px">API 키 설정</h2>
+    <p class="meta">키는 이 브라우저(localStorage)에만 저장되고, 파일이나 저장소에는 남지 않아요. 비워 두면 키 없이 쓸 수 있는 기능만 동작해요.</p>
+    <form id="key-form" class="key-form" autocomplete="off">
+      <label for="k-kakao"><b>카카오 JavaScript 키</b><span>지도·장소 검색. developers.kakao.com › 내 애플리케이션 › 앱 설정 › 앱 › 플랫폼 키 › JavaScript 키. 같은 화면의 ‘JavaScript SDK 도메인’에 이 페이지 주소(예: https://아이디.github.io)를 등록하고, ‘카카오맵 › 사용 설정’을 ON으로 해 주세요.</span>
+        <input id="k-kakao" type="password" spellcheck="false" placeholder="예: 0a1b2c… (32자리)"></label>
+      <label for="k-data"><b>공공데이터포털 인증키</b><span>실시간 도착·혼잡도. data.go.kr에서 ‘경기도_버스도착정보 조회’와 ‘경기도_정류소 조회’를 활용신청한 뒤 마이페이지의 일반 인증키.</span>
+        <input id="k-data" type="password" spellcheck="false" placeholder="일반 인증키 (Decoding)"></label>
+      <div class="key-act"><button type="submit" class="go">저장하고 다시 불러오기</button><button type="button" class="chip" id="key-show">키 보기</button><button type="button" class="chip" id="key-clear">이 브라우저에서 키 지우기</button></div>
+      <p class="meta" id="key-msg"></p>
+    </form>
   </section>
 
-  <nav class="screens" role="tablist" aria-label="화면 선택">
-    <button role="tab" id="tab-shuttle" data-screen="shuttle" aria-selected="true"><b>학교 셔틀버스</b><span>통학 · 교차 · 평택역 · 교내순환</span></button>
-    <button role="tab" id="tab-city" data-screen="city" aria-selected="false"><b>마을·시내·직행버스</b><span>실시간 도착 · 길찾기</span></button>
+  <nav class="mode" role="tablist" aria-label="버스 종류">
+    <button role="tab" id="mode-shuttle" data-mode="shuttle" aria-selected="true"><b>학교 셔틀버스</b><span>통학 · 교차 · 평택역 · 교내순환</span></button>
+    <button role="tab" id="mode-city" data-mode="city" aria-selected="false"><b>마을·시내·직행버스</b><span>실시간 도착 · 길찾기</span></button>
   </nav>
 
-  <!-- 화면 1: 학교 셔틀버스 -->
-  <section id="screen-shuttle" aria-labelledby="tab-shuttle">
-    <div id="banner" class="banner" hidden></div>
-    <div class="col">
-      <div class="sec-head"><h2>곧 출발하는 셔틀</h2><span>2026-2학기 시간표 기준 · 평일 운행</span></div>
-      <div class="pills" id="filters"></div>
-      <div class="list" id="soon"></div>
+  <div class="notice" id="notice" hidden></div>
 
-      <div class="sec-head"><h2>셔틀 시간표</h2><span>2026. 9. 1. ~ 12. 21.</span></div>
-      <div class="tabs" id="tabs" role="tablist"></div>
-      <div class="card" id="panel"></div>
-
-      <div class="sec-head"><h2>타는 곳 · 이용 안내</h2></div>
-      <div class="gcard"><h3>셔틀 정류장</h3><div id="stops"></div></div>
-      <div class="gcard">
-        <h3>승차 방법 (e-ID 모바일학생증)</h3>
-        <ol class="steps"><li>'중앙더하기' 앱에 로그인해요.</li><li>첫 화면의 QR 버튼을 눌러요.</li><li>버스 단말기에 QR 코드를 대요.</li></ol>
-        <div class="msg">2025년 8월 이전 e-ID는 안 돼요. 오류가 나면 앱을 다시 설치하세요.</div>
-        <h3 style="margin-top:16px">운행·분실물 문의 (㈜금호고속)</h3>
-        <div id="contacts"></div>
+  <!-- ============ 학교 셔틀 ============ -->
+  <div id="m-shuttle" class="wrap" style="padding:0;gap:26px">
+    <section aria-labelledby="h-sb">
+      <div class="sec-head"><h2 id="h-sb">곧 출발하는 셔틀</h2><span class="sub">2026-2학기 시간표 기준 · 평일 운행</span></div>
+      <div class="chips" role="group" aria-label="출발 지역">
+        <button class="chip" id="sf-all" data-sf="all">전체</button>
+        <button class="chip" id="sf-davinci" data-sf="davinci">다빈치에서 출발</button>
+        <button class="chip" id="sf-seoul" data-sf="seoul">서울에서 출발</button>
+        <button class="chip" id="sf-pt" data-sf="pt">평택역에서 출발</button>
       </div>
-    </div>
-  </section>
+      <div class="board" id="shuttle-rows"></div>
+    </section>
 
-  <!-- 화면 2: 마을·시내·직행버스 -->
-  <section id="screen-city" aria-labelledby="tab-city" hidden>
-    <div class="banner info" id="cityBanner"></div>
-    <div class="col wide">
-      <div class="sec-head"><h2>정류장 실시간 도착</h2><span>펼친 정류장만 60초마다 갱신</span></div>
-      <div id="places"></div>
-
-      <div class="sec-head" style="margin-top:26px"><h2>길찾기 · 장소 검색</h2><span id="provider"></span></div>
-      <div class="gcard">
-        <div class="frow"><input class="inp" id="fromQ" value="중앙대학교 다빈치캠퍼스" aria-label="출발지"><button class="btn ghost" id="btnGeo">현재 위치</button></div>
-        <div class="frow"><input class="inp" id="toQ" placeholder="가고 싶은 곳 (예: 안성터미널, 평택역)" aria-label="도착지"><button class="btn" id="btnSearch">검색</button></div>
-        <div class="qrow" id="quick"></div>
-        <div id="results"></div>
-        <div id="routeBox"></div>
-        <div class="hint" id="mapNote"></div>
-        <div id="map" role="img" aria-label="지도"></div>
+    <section aria-labelledby="h-tt">
+      <div class="sec-head"><h2 id="h-tt">셔틀 시간표</h2><span class="sub">2026. 9. 1. ~ 12. 21.</span></div>
+      <div>
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div class="panel" id="panel" role="tabpanel"></div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <div class="src">
-    셔틀 시간표: 「2026-2학기 다빈치캠퍼스 노선별 버스 운행 시간표(통학버스 등)」. 시내·직행·시외버스 노선과 정류장: 카카오맵 버스 정보(2026. 10. 6. 조회). 실시간: 경기도 버스도착정보·정류소 조회(사용자 키). 지도·장소 검색: 카카오맵(사용자 키), 키가 없으면 OpenStreetMap·CARTO·Photon. 도보·택시 경로: OpenStreetMap(FOSSGIS). 학교 공지가 바뀌면 공지가 우선이에요.
+    <section aria-labelledby="h-ss">
+      <h2 id="h-ss" style="font-size:19px">타는 곳 · 이용 안내</h2>
+      <div class="grid2">
+        <div class="card"><h3>셔틀 정류장</h3><div class="stoplist" id="shuttle-stops"></div></div>
+        <div class="card">
+          <h3>승차 방법 (e-ID 모바일학생증)</h3>
+          <ol>
+            <li>‘중앙더하기’ 앱에 로그인해요.</li>
+            <li>첫 화면의 <b>QR</b> 버튼을 눌러요.</li>
+            <li>버스 단말기에 QR 코드를 대요.</li>
+          </ol>
+          <p class="meta">2025년 8월 이전 e-ID는 안 돼요. 오류가 나면 앱을 다시 설치하세요.</p>
+          <h3 style="margin-top:6px">운행·분실물 문의 (㈜금호고속)</h3>
+          <p class="meta"><b>통학버스</b> 김용희 대리 <span class="mono">02-530-6311</span><button class="copy" data-c="02-530-6311">복사</button> <span class="mono">010-8060-0287</span><button class="copy" data-c="010-8060-0287">복사</button></p>
+          <p class="meta"><b>교차·평택역·교내순환</b> 박재훈 대리 <span class="mono">010-5954-0323</span><button class="copy" data-c="010-5954-0323">복사</button></p>
+        </div>
+      </div>
+    </section>
   </div>
+
+  <!-- ============ 마을·시내·직행 ============ -->
+  <div id="m-city" class="wrap" style="padding:0;gap:22px" hidden>
+    <div class="gate" id="city-gate" hidden></div>
+
+    <section aria-labelledby="h-plan" id="plan-sec">
+      <div class="sec-head"><h2 id="h-plan">길찾기</h2><span class="sub">음식점·건물·역 이름 모두 검색돼요</span></div>
+      <form class="plan-form" id="plan-form" autocomplete="off">
+        <div class="od">
+          <label class="od-row"><span class="od-tag from">출발</span>
+            <select id="from">
+              <option value="b801">801관 (중앙문화관)</option>
+              <option value="b810">810관 (원형관)</option>
+              <option value="b903">903관</option>
+              <option value="dorm">생활관·기숙사</option>
+              <option value="gate">정문·중앙대입구</option>
+              <option value="lotte">롯데캐슬아파트</option>
+              <option value="me">내 현재 위치</option>
+              <option value="pin" hidden>지도에서 고른 곳</option>
+            </select></label>
+          <label class="od-row"><span class="od-tag to">도착</span>
+            <input id="dest" type="search" placeholder="예: 안성맞춤시장 국밥, 스타필드안성, 강남역" aria-label="도착지"></label>
+        </div>
+        <button class="go" type="submit">경로 찾기</button>
+      </form>
+      <div class="picks" id="picks"></div>
+      <div class="mapwrap">
+        <div id="map"></div>
+        <div class="map-hint" id="map-hint">지도를 누르면 그곳을 출발지나 도착지로 정할 수 있어요</div>
+      </div>
+      <p class="mapnote" id="map-kind"></p><div hidden>
+      </div>
+      <div id="results"></div>
+    </section>
+
+    <section aria-labelledby="h-cb">
+      <div class="sec-head"><h2 id="h-cb">곧 도착하는 버스</h2><div class="rt-wrap"><span class="rt-state" id="rt-state"><i class="dot"></i>실시간 확인 중</span><button type="button" class="rf-btn" id="rt-refresh" aria-label="도착 정보 새로고침"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.75 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg><span>새로고침</span></button></div></div>
+      <div class="chips" role="group" aria-label="정류장 선택" id="place-chips"></div>
+      <div class="board" id="city-rows"></div>
+      <div class="notice" id="rt-help" hidden></div>
+      <details class="diag" id="diag" hidden><summary>실시간 연결 상태</summary><div id="diag-body"></div></details>
+    </section>
+
+    <section aria-labelledby="h-hw">
+      <div class="sec-head"><h2 id="h-hw">지난 배차 간격</h2><span class="sub" id="hw-range"></span></div>
+      <div class="hw-ctrl">
+        <div class="seg" role="group" aria-label="기간">
+          <button type="button" id="hw-1" data-hw="1" aria-pressed="true">1주 전</button>
+          <button type="button" id="hw-2" data-hw="2" aria-pressed="false">2주 전</button>
+          <button type="button" id="hw-3" data-hw="3" aria-pressed="false">3주 전</button>
+        </div>
+        <div class="chips" role="group" aria-label="정류장">
+          <button class="chip" id="hs-34151" data-hs="34151" aria-pressed="true">서울·평택 방면</button>
+          <button class="chip" id="hs-34157" data-hs="34157" aria-pressed="false">안성시내 방면</button>
+        </div>
+      </div>
+      <div id="hw-body" class="hw-body"></div>
+    </section>
+
+    <section>
+      <details class="lines" id="lines">
+        <summary>노선 정보 (첫차·막차·배차간격)</summary>
+        <div id="line-list" style="margin-top:8px"></div>
+      </details>
+    </section>
+  </div>
+
+  <footer id="foot">셔틀 시간표: 「2026-2학기 다빈치캠퍼스 노선별 버스 운행 시간표(통학버스 등)」. 시내·직행·시외버스 노선과 정류장: 카카오맵 버스 정보(2026. 10. 6. 조회). 실시간: 경기도 버스도착정보·정류소 조회(사용자 키). 지도·장소 검색: 카카오맵(사용자 키), 키가 없으면 OpenStreetMap·CARTO·Photon. 도보·택시 경로: OpenStreetMap(FOSSGIS). 학교 공지가 바뀌면 공지가 우선이에요.</footer>
 </div>
 
 <script>
-/* ===== 1. 설정 (KEYS) ===== */
-const store = {
-  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+/* ======================= 설정 =======================
+   인증 키는 코드에 넣지 않아요(공개 저장소 유출 방지). 사용자가 화면에서 입력 → localStorage 저장. */
+const KEYS = (()=>{   // 키는 파일에 적지 않고, 화면의 'API 키 설정'에서 입력해 이 브라우저에만 저장해요
+  let k={}; try{ k=JSON.parse(localStorage.getItem("dvb-keys")||"{}"); }catch(e){}
+  return { KAKAO_JS: (k.KAKAO_JS||"").trim(), DATA_GO_KR: (k.DATA_GO_KR||"").trim(), DAILY_LIMIT: 1000 };
+})();
+const PERIOD = { start:"2026-09-01", end:"2026-12-21" };
+const HOLIDAYS = { "2026-10-05":"개천절 대체공휴일", "2026-10-09":"한글날" };
+const REFRESH_SEC = 60;
+
+/* ======================= 학교 셔틀 ======================= */
+const SHUTTLE_STOPS = {
+  gtt:  { name:"서울고속버스터미널", sub:"고속터미널역 3번 출구 앞", q:"고속터미널역 3번출구" },
+  jj:   { name:"죽전간이정류장", sub:"경부고속도로 죽전 정류장", q:"죽전간이정류장" },
+  b903: { name:"다빈치캠퍼스 903관 앞", sub:"통학버스 승하차", q:"중앙대학교 다빈치캠퍼스 903관" },
+  b801: { name:"중앙문화관(801관) 앞", sub:"교차버스 출발", q:"801관중앙문화관앞" },
+  b810: { name:"원형관(810관) 앞", sub:"평택역버스 · 교내순환", q:"810관원형관앞" },
+  gate: { name:"다빈치캠퍼스 정문", sub:"교내순환 출발", q:"중앙대학교 다빈치캠퍼스 정문" },
+  b201: { name:"서울캠퍼스 본관(201관) 앞", sub:"교차버스 출발 (서울)", q:"중앙대학교 서울캠퍼스 본관" },
+  pt:   { name:"평택역 (종합사회복지관)", sub:"평택역버스 승하차", q:"평택역" }
 };
-let KEYS = store.get("dvb-keys", {});
-
-/* ===== 2. 셔틀 시간표 (ROUTES) — 학기마다 이 부분만 바꿔요 ===== */
-const PERIOD = { start: "2026-09-01", end: "2026-12-21" };
-// 손으로 관리하는 공휴일(운행 기간 안, 대체공휴일 포함)
-const HOLIDAYS = { "2026-09-24": "추석 연휴", "2026-09-25": "추석", "2026-09-26": "추석 연휴",
-  "2026-10-03": "개천절", "2026-10-05": "개천절 대체공휴일", "2026-10-09": "한글날" };
-// T(시각, 월~목 대수, 금 대수) — 대수 0이면 그 요일은 운행하지 않아요.
-const T = (t, mt = 1, fri = 1) => ({ t, c: { mt, fri } });
-const CONTACTS = [
-  { label: "통학버스", who: "김용희 대리", tels: ["02-530-6311", "010-8060-0287"] },
-  { label: "교차·평택역·교내순환", who: "박재훈 대리", tels: ["010-5954-0323"] },
-];
-const TABS = [["bus", "통학버스"], ["cross", "교차버스"], ["ptk", "평택역버스"], ["loop", "교내순환"]];
-const FILTERS = [["all", "전체"], ["davinci", "다빈치에서 출발"], ["seoul", "서울에서 출발"], ["ptk", "평택역에서 출발"]];
 const ROUTES = [
-  { id: "down", tab: "bus", badge: "통학버스", org: "seoul", title: "서울 → 다빈치", sub: "서울고속버스터미널 출발",
-    head: "하행 · 서울 → 다빈치", path: "서울고속버스터미널(고속터미널역 3번 출구 앞) → 죽전간이정류장 → 다빈치캠퍼스 903관 앞",
-    times: [T("7:50"), T("7:55", 2, 1), T("8:50")] },
-  { id: "up", tab: "bus", badge: "통학버스", org: "davinci", title: "다빈치 → 서울", sub: "다빈치캠퍼스 903관 앞 출발",
-    head: "상행 · 다빈치 → 서울", path: "다빈치캠퍼스 903관 앞 → 죽전간이정류장 → 서울고속버스터미널(내 하차장)",
-    times: [T("14:40"), T("15:40", 1, 0), T("17:40"), T("18:40")] },
-  { id: "x-seoul", tab: "cross", badge: "교차버스", org: "davinci", title: "다빈치 → 서울캠퍼스", sub: "중앙문화관(801관) 앞 출발",
-    head: "다빈치 → 서울캠퍼스", path: "중앙문화관(801관) 앞 정류장 출발", times: [T("7:20")] },
-  { id: "x-davinci", tab: "cross", badge: "교차버스", org: "seoul", title: "서울캠퍼스 → 다빈치", sub: "서울캠퍼스 본관(201관) 앞 출발",
-    head: "서울캠퍼스 → 다빈치", path: "서울캠퍼스 본관(201관) 앞 출발", times: [T("18:10")] },
-  { id: "ptk-to", tab: "ptk", badge: "평택역버스", org: "davinci", title: "다빈치 → 평택역", sub: "원형관(810관) 앞 출발",
-    head: "다빈치 → 평택역", path: "다빈치캠퍼스 원형관(810관) 앞 출발",
-    times: ["9:20", "10:40", "11:40", "13:40", "14:40", "15:40", "16:40", "17:50"].map(t => T(t)) },
-  { id: "ptk-from", tab: "ptk", badge: "평택역버스", org: "ptk", title: "평택역 → 다빈치", sub: "평택역 (종합사회복지관) 출발",
-    head: "평택역 → 다빈치", path: "평택역 (종합사회복지관) 출발",
-    times: ["8:45", "8:50", "10:00", "10:40", "11:40", "14:40", "15:40", "16:40", "17:50"].map(t => T(t)) },
-  { id: "loop", tab: "loop", badge: "교내순환", org: "davinci", title: "정문 → 원형관(810관)", sub: "다빈치캠퍼스 정문 출발",
-    head: "교내순환 · 정문 → 원형관(810관)", path: "다빈치캠퍼스 안을 순환해요 (회차마다 정문 출발 · 원형관 도착)",
-    // 7회차 원형관 12:55는 원문 그대로 (11:55 오기 가능성). 임의로 고치지 않는다.
-    times: [["9:00", "9:07"], ["9:20", "9:27"], ["9:40", "9:47"], ["10:15", "10:25"], ["10:45", "10:55"], ["11:15", "11:25"],
-      ["11:45", "12:55", "원문 그대로예요. 11:55 오기일 수 있어요."], ["13:15", "13:25"], ["13:45", "13:55"], ["14:15", "14:25"],
-      ["14:45", "14:55"], ["15:10", "15:17"], ["15:30", "15:37"], ["15:50", "15:57"], ["16:10", "16:17"], ["16:30", "16:37"],
-      ["16:50", "16:57"], ["17:10", "17:17"], ["17:30", "17:37"], ["17:50", "18:00"]]
-      .map(([a, b, w]) => ({ ...T(a), arr: b, warn: w || "" })) },
+  { id:"commute", label:"통학버스",
+    dirs:[
+      { title:"하행 · 서울 → 다빈치", from:"seoul", stop:"gtt", path:["gtt","jj","b903"],
+        runs:[ {t:"7:50", n:{mt:1,fr:1}}, {t:"7:55", n:{mt:2,fr:1}}, {t:"8:50", n:{mt:1,fr:1}} ] },
+      { title:"상행 · 다빈치 → 서울", from:"davinci", stop:"b903", path:["b903","jj","gtt"], pathEnd:"서울고속버스터미널(내 하차장)",
+        runs:[ {t:"14:40", n:{mt:1,fr:1}}, {t:"15:40", n:{mt:1,fr:0}}, {t:"17:40", n:{mt:1,fr:1}}, {t:"18:40", n:{mt:1,fr:1}} ] }
+    ] },
+  { id:"cross", label:"교차버스",
+    dirs:[
+      { title:"다빈치 → 서울캠퍼스", from:"davinci", stop:"b801", path:["b801","b201"], runs:[{t:"7:20"}] },
+      { title:"서울캠퍼스 → 다빈치", from:"seoul", stop:"b201", path:["b201","b903"], pathEnd:"다빈치캠퍼스", runs:[{t:"18:10"}] }
+    ] },
+  { id:"pt", label:"평택역버스",
+    dirs:[
+      { title:"다빈치 → 평택역", from:"davinci", stop:"b810", path:["b810","pt"],
+        runs:["9:20","10:40","11:40","13:40","14:40","15:40","16:40","17:50"].map(t=>({t})) },
+      { title:"평택역 → 다빈치", from:"pt", stop:"pt", path:["pt","b810"],
+        runs:["8:45","8:50","10:00","10:40","11:40","14:40","15:40","16:40","17:50"].map(t=>({t})) }
+    ] },
+  { id:"loop", label:"교내순환",
+    dirs:[
+      { title:"정문 → 원형관(810관)", from:"davinci", stop:"gate", path:["gate","b810"],
+        loop:[["9:00","9:07"],["9:20","9:27"],["9:40","9:47"],["10:15","10:25"],["10:45","10:55"],["11:15","11:25"],
+              ["11:45","12:55",1],["13:15","13:25"],["13:45","13:55"],["14:15","14:25"],["14:45","14:55"],["15:10","15:17"],
+              ["15:30","15:37"],["15:50","15:57"],["16:10","16:17"],["16:30","16:37"],["16:50","16:57"],["17:10","17:17"],
+              ["17:30","17:37"],["17:50","18:00"]] }
+    ] }
 ];
-const STOPS = [
-  ["서울고속버스터미널", "고속터미널역 3번 출구 앞", "서울고속버스터미널"],
-  ["죽전간이정류장", "경부고속도로 죽전 정류장", "죽전간이정류장"],
-  ["다빈치캠퍼스 903관 앞", "통학버스 승하차", "중앙대학교 다빈치캠퍼스 903관"],
-  ["중앙문화관(801관) 앞", "교차버스 출발", "중앙대학교 다빈치캠퍼스 중앙문화관"],
-  ["원형관(810관) 앞", "평택역버스 · 교내순환", "중앙대학교 다빈치캠퍼스 원형관"],
-  ["다빈치캠퍼스 정문", "교내순환 출발", "중앙대학교 다빈치캠퍼스 정문"],
-  ["서울캠퍼스 본관(201관) 앞", "교차버스 출발 (서울)", "중앙대학교 서울캠퍼스 본관"],
-  ["평택역 (종합사회복지관)", "평택역버스 승차장", "평택역 종합사회복지관"],
-];
+ROUTES.forEach(r=>r.dirs.forEach(d=>{ if(d.loop) d.runs=d.loop.map(x=>({t:x[0],t2:x[1],note:x[2]})); }));
 
-/* ===== 3. 시내·직행 데이터 (실시간 정류장 9곳) ===== */
-const PLACES = [
-  { name: "중앙대.롯데캐슬아파트" }, { name: "대학9길" }, { name: "중앙대학로.대학1길" },
-  { name: "중앙대입구", no: "34153" }, { name: "중앙대생활관.기숙사" }, { name: "801관중앙문화관앞" },
-  { name: "810관원형관앞" }, { name: "내리하나로마트" }, { name: "중앙대학로.내리1길" },
-];
-// 지도 초기 위치(대략값). 길찾기 출발지는 장소 검색 결과를 우선 쓰고, 검색이 안 될 때만 이 값을 써요.
-const CAMPUS = { lat: 37.0052, lng: 127.2287, name: "중앙대학교 다빈치캠퍼스" };
+/* ======================= 시내·직행·시외 ======================= */
+const LINE_DATA = {"L":{"B7930":{"no":"1","stops":["BS86928","BS253982","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86133","BS86132","BS86131","BS86130","BS86129","BS86128","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86929"]},"B7933":{"no":"1-3","stops":["BS86928","BS253982","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS218944","BS452773","BS86411","BS86905","BS86413","BS86414","BS86415","BS457142","BS468832","BS86953","BS86412","BS452774","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86929"]},"B7945":{"no":"1-8","stops":["BS86483","BS251676","BS86177","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS575181","BS86120","BS86119","BS86383","BS86763","BS504759","BS86488","BS86484","BS421841","BS468833","BS86820","BS86821","BS254329","BS86822","BS468834","BS421842","BS86485","BS86489","BS504758","BS86112","BS86382","BS86111","BS86918","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS127606","BS86184","BS86483"]},"B7289":{"no":"1150","stops":["BS325311","BS328425","BS76314","BS76313","BS76312","BS76310","BS76513","BS325312","BS76262","BS76261","BS76288","BS76307","BS76306","BS76349","BS76348","BS76353","BS76427","BS76426","BS76425","BS76424","BS76423","BS76422","BS76421","BS76420","BS76440","BS321815","BS86380","BS86115","BS86378","BS86114","BS86113","BS250549","BS86112","BS86382","BS86111","BS86918","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS575181","BS86120","BS86119","BS86383","BS86763","BS250548","BS86117","BS86116","BS86969","BS452408","BS452406","BS452407","BS76442","BS76441","BS76438","BS76437","BS76436","BS76435","BS76434","BS76433","BS76432","BS76431","BS76352","BS76351","BS76350","BS76338","BS76337","BS76452","BS76264","BS76263","BS76256","BS76514","BS76334","BS76333","BS321911","BS76827","BS76332"]},"B7928":{"no":"370","stops":["BS86257","BS333743","BS86377","BS86321","BS86320","BS86399","BS86319","BS86612","BS86397","BS86973","BS86363","BS421838","BS86726","BS421837","BS86728","BS86362","BS86361","BS86360","BS86359","BS86358","BS86961","BS86395","BS86357","BS86293","BS86393","BS86318","BS86317","BS86316","BS455719","BS86315","BS86314","BS86406","BS86313","BS86312","BS86311","BS86153","BS86933","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS575181","BS86120","BS86387","BS86880","BS86117","BS86116","BS86969","BS452408","BS452406","BS452407","BS76442","BS76441","BS76516","BS76763","BS76874","BS76829","BS76824","BS76518","BS253551","BS253541","BS76873","BS528654","BS76515","BS76440","BS321815","BS86380","BS86115","BS86378","BS86114","BS86113","BS86898","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86931","BS86154","BS86336","BS86335","BS86334","BS86333","BS86332","BS86331","BS86330","BS86329","BS86391","BS86328","BS86392","BS86297","BS86368","BS86396","BS86960","BS86394","BS86367","BS86366","BS86365","BS86624","BS86727","BS421838","BS86726","BS421837","BS86364","BS86974","BS86398","BS86612","BS86327","BS86756","BS86326","BS316514","BS86325","BS86257"]},"B7938":{"no":"7-1","stops":["BS86928","BS253982","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS458822","BS421613","BS421614","BS421615","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS528706","BS86906","BS86983","BS86907","BS86911","BS458485","BS86456","BS86909","BS86459","BS86457","BS86458","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS421616","BS421617","BS421618","BS458829","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86929"]},"B7929":{"no":"70","stops":["BS86928","BS253982","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS575181","BS86120","BS86119","BS86383","BS86763","BS250548","BS86117","BS86116","BS86969","BS452408","BS452406","BS452407","BS76442","BS76441","BS76516","BS76763","BS76874","BS76829","BS76824","BS76518","BS253551","BS253541","BS76873","BS528654","BS76515","BS76440","BS321815","BS86380","BS86115","BS86378","BS86114","BS86113","BS250549","BS86112","BS86382","BS86111","BS86918","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86929"]},"B82021":{"no":"4305","stops":["BS86980","BS253982","BS86179","BS86195","BS86126","BS86123","BS250548","BS86117","BS400280","BS400281","BS535979","BS400617","BS400282","BS400283","BS507646","BS400284","BS400285","BS400286","BS258696","BS400287","BS400288","BS338409","BS280672","BS338410","BS70166","BS70164","BS70162","BS70163","BS70165","BS70167","BS338399","BS280666","BS338400","BS447574","BS400271","BS321750","BS400272","BS400273","BS400274","BS258297","BS316511","BS400275","BS400616","BS535980","BS400278","BS400279","BS86113","BS250549","BS86107","BS86127","BS86185","BS86182","BS86929"]},"B75650":{"no":"4401","stops":["BS86195","BS86126","BS86123","BS250548","BS86117","BS400280","BS400281","BS535979","BS400617","BS400282","BS400283","BS507646","BS400284","BS400285","BS400286","BS258696","BS400287","BS400288","BS402595","BS338614","BS447119","BS69979","BS69912","BS69914","BS110009","BS69918","BS69920","BS337907","BS338623","BS338624","BS338625","BS447124","BS338626","BS402596","BS400270","BS400271","BS321750","BS400272","BS400273","BS400274","BS258297","BS316511","BS400275","BS400616","BS535980","BS400278","BS400279","BS86113","BS250549","BS86107","BS86127","BS86185"]},"B70633":{"no":"8200","stops":["BS86980","BS253982","BS86179","BS86195","BS86126","BS86123","BS250548","BS86117","BS400280","BS400281","BS535979","BS400617","BS400282","BS400283","BS507646","BS401919","BS82690","BS82688","BS325846","BS72616","BS72554","BS331617","BS421530","BS72564","BS72796","BS447581","BS72775","BS82711","BS401918","BS258297","BS316511","BS400275","BS400616","BS535980","BS400278","BS400279","BS86113","BS250549","BS86107","BS86127","BS86185","BS86182","BS86980"]},"B70634":{"no":"8201","stops":["BS86980","BS253982","BS86179","BS86195","BS86126","BS86123","BS250548","BS86117","BS400280","BS400281","BS535979","BS400617","BS400282","BS400283","BS507646","BS400284","BS400285","BS400286","BS258696","BS400287","BS447143","BS73638","BS508713","BS508714","BS508715","BS459357","BS73384","BS508716","BS508717","BS508718","BS73635","BS447144","BS400271","BS321750","BS400272","BS400273","BS400274","BS258297","BS316511","BS400275","BS400616","BS535980","BS400278","BS400279","BS86113","BS250549","BS86107","BS86127","BS86185","BS86182","BS86980"]},"B72168":{"no":"8202","stops":["BS86980","BS253982","BS86179","BS86195","BS86126","BS86123","BS250548","BS86117","BS400280","BS400281","BS552797","BS558496","BS558497","BS415923","BS415925","BS326334","BS318481","BS318482","BS248043","BS325281","BS247780","BS270838","BS271922","BS404340","BS402347","BS404490","BS552795","BS558498","BS558499","BS552796","BS400278","BS400279","BS86113","BS250549","BS86107","BS86127","BS86185","BS86182","BS86980"]},"B80590":{"no":"8204","stops":["BS86980","BS253982","BS86179","BS86195","BS86126","BS86123","BS447576","BS250548","BS86117","BS400280","BS400281","BS535979","BS400617","BS400282","BS400283","BS507646","BS400284","BS402616","BS400514","BS338381","BS338465","BS507883","BS74475","BS507890","BS338466","BS338382","BS400515","BS402615","BS400274","BS258297","BS316511","BS400275","BS400616","BS535980","BS400278","BS400279","BS86113","BS250549","BS86107","BS86127","BS86185","BS86182","BS86980"]},"B60925":{"no":"8308","stops":["BS331591","BS260136","BS260137","BS260138","BS86126","BS447575","BS331592","BS400280","BS417484","BS430047","BS430060","BS430061","BS430062","BS430063","BS430064","BS455432","BS455433","BS455434","BS430065","BS430066","BS430067","BS455435","BS430068","BS417485","BS430050","BS400279","BS250549","BS86127","BS331596"]},"B7940":{"no":"1-2","stops":["BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS85991","BS85990","BS86461","BS86972","BS86126","BS86125","BS86965","BS86964","BS86970","BS127329","BS254297","BS86915","BS86916","BS457111","BS463423","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602"]},"B7941":{"no":"1-4","stops":["BS86177","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS557769","BS250369","BS250370","BS250371","BS86469","BS497857","BS86112","BS86382","BS86111","BS86918","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86171","BS86177"]},"B24536":{"no":"1-5","stops":["BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS218944","BS452773","BS86411","BS86905","BS86413","BS218951","BS218953","BS218954","BS218955","BS218958","BS218959","BS218960","BS452774","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602"]},"B7942":{"no":"1-6","stops":["BS86177","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86455","BS548623","BS86416","BS86418","BS85999","BS86001","BS86473","BS127706","BS86876","BS539847","BS86878","BS86477","BS86770","BS85965","BS254301","BS86771","BS86478","BS86879","BS539848","BS86877","BS127707","BS86474","BS86471","BS86000","BS86419","BS86417","BS548619","BS458485","BS86456","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602"]},"B7944":{"no":"1-9","stops":["BS86177","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86455","BS310423","BS86859","BS310424","BS86858","BS86481","BS513135","BS86479","BS86475","BS86011","BS539847","BS86878","BS86477","BS86770","BS85965","BS254301","BS86771","BS86478","BS86879","BS539848","BS86877","BS127707","BS86474","BS86471","BS86000","BS86419","BS86417","BS548619","BS458485","BS86456","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS127606"]},"B7946":{"no":"7","stops":["BS86928","BS253982","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS575181","BS86120","BS86119","BS86383","BS86763","BS504759","BS86488","BS86948","BS86490","BS86492","BS86015","BS86014","BS86494","BS86013","BS86012","BS86479","BS86475","BS551482","BS86011","BS539847","BS86878","BS86477","BS86770","BS85965","BS414506","BS86883","BS86385","BS161459","BS85983","BS423529","BS85982","BS85981","BS85980","BS85979","BS85978","BS86792","BS85977","BS471522","BS471523","BS85974","BS86793","BS85973","BS85972","BS85971","BS85970","BS85969","BS423544","BS537139","BS162094","BS86386","BS86885","BS86882","BS414507","BS85965","BS254301","BS86771","BS86478","BS86879","BS539848","BS86010","BS551483","BS86476","BS86480","BS86009","BS86008","BS86495","BS86007","BS86006","BS86493","BS86962","BS86491","BS86489","BS504758","BS86112","BS86382","BS86111","BS86918","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86929"]},"B7947":{"no":"7-2","stops":["BS86928","BS253982","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS575181","BS86120","BS86119","BS86383","BS86763","BS504759","BS86488","BS86948","BS86490","BS86492","BS86015","BS86014","BS86494","BS86013","BS86012","BS86479","BS86475","BS551482","BS86011","BS539847","BS86878","BS86477","BS86770","BS85965","BS254301","BS86771","BS86478","BS86879","BS539848","BS86010","BS551483","BS86476","BS86480","BS86009","BS86008","BS86495","BS86007","BS86006","BS86493","BS86962","BS86491","BS86489","BS504758","BS86112","BS86382","BS86111","BS86918","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86929"]},"B7949":{"no":"7-3","stops":["BS86928","BS253982","BS86152","BS86162","BS127607","BS86160","BS86159","BS86158","BS86157","BS86195","BS86384","BS86194","BS86193","BS86192","BS86191","BS86126","BS86125","BS86124","BS86123","BS86122","BS86121","BS575181","BS86120","BS86119","BS86383","BS86763","BS250548","BS86117","BS86510","BS531004","BS531005","BS86511","BS86509","BS86114","BS86113","BS250549","BS86112","BS86382","BS86111","BS86918","BS86110","BS575182","BS86109","BS86108","BS86107","BS86106","BS86105","BS86127","BS86190","BS86189","BS86188","BS86187","BS86186","BS86185","BS86175","BS86174","BS86173","BS86172","BS127602","BS86170","BS86156","BS86155","BS86929"]},"B13385":{"no":"8830","stops":["BS160239","BS400561","BS424460","BS400582","BS338574","BS338575","BS400259","BS400260","BS400261","BS338382","BS400515","BS400274","BS316511","BS400275","BS400616","BS400278","BS400279","BS86113","BS331595","BS86107","BS86127","BS331596","BS331622","BS427598","BS427599","BS427600","BS331591","BS260136","BS260137","BS260138","BS86126","BS86123","BS447576","BS331592","BS86117","BS400280","BS400281","BS400617","BS400282","BS400283","BS400284","BS400514","BS400254","BS400255","BS400256","BS338564","BS338565","BS400263","BS424459","BS400560","BS226621"]},"B74486":{"no":"8830-1","stops":["BS160239","BS459616","BS400561","BS424460","BS400582","BS338574","BS338575","BS400259","BS400260","BS400261","BS338382","BS400515","BS402615","BS400274","BS316511","BS400275","BS400616","BS400278","BS400279","BS86113","BS331595","BS86107","BS86127","BS86185","BS86181","BS331596","BS331622","BS427598","BS427599","BS427600","BS331591","BS86179","BS86195","BS86126","BS86123","BS331592","BS86117","BS400280","BS400281","BS400617","BS400282","BS400283","BS400284","BS402616","BS400514","BS400254","BS400255","BS400256","BS338564","BS338565","BS400263","BS424459","BS400560","BS226621"]}},"S":{"BS86928":["안성종합버스터미널",37.01226,127.29167,"34663"],"BS86152":["안성푸르지오아파트",37.01071,127.28958,"33219"],"BS86162":["보개우체국.가사동",37.00896,127.28361,"33202"],"BS127607":["봉산로터리",37.00582,127.2784,"34716"],"BS86160":["KT안성지사",37.00629,127.27605,"33184"],"BS86159":["영동",37.00676,127.2737,"33177"],"BS86158":["서인사거리.중앙로",37.00744,127.27033,"33165"],"BS86157":["(구)안성터미널",37.00794,127.26779,"33142"],"BS86195":["한경국립대학교",37.01,127.26321,"33121"],"BS86384":["우남아파트",37.01241,127.25998,"33107"],"BS86194":["이마트앞",37.01338,127.25719,"33096"],"BS86193":["신건지동",37.01343,127.25362,"33086"],"BS86192":["안성제1산업단지",37.01306,127.25119,"33080"],"BS86191":["대덕면행정복지센터.내건지리",37.01288,127.23811,"34182"],"BS86133":["중앙대입구",37.0122,127.22652,"34153"],"BS86132":["중앙대생활관.기숙사",37.00705,127.22828,"34164"],"BS86131":["801관중앙문화관앞",37.00446,127.22935,"34168"],"BS86130":["810관원형관앞",37.00214,127.22865,"34166"],"BS86129":["801관중앙문화관앞",37.00465,127.22937,"34167"],"BS86128":["중앙대생활관.기숙사",37.00709,127.2285,"34165"],"BS86127":["중앙대.롯데캐슬아파트",37.01279,127.2269,"34157"],"BS86190":["대덕면행정복지센터.내건지리",37.0126,127.23844,"34183"],"BS86189":["안성제1공단입구",37.01284,127.25155,"33077"],"BS86188":["개내교.옥산주공아파트",37.01318,127.2538,"33087"],"BS86187":["이마트앞",37.01321,127.25648,"33093"],"BS86186":["우남아파트",37.01169,127.26059,"33106"],"BS86185":["한경국립대학교",37.00982,127.26311,"33120"],"BS86175":["(구)안성터미널",37.00794,127.2673,"33134"],"BS86174":["성모병원입구",37.0072,127.271,"33169"],"BS86173":["영동",37.00661,127.27392,"33178"],"BS86172":["봉남동.KT",37.00613,127.27634,"33183"],"BS127602":["봉산로터리",37.0056,127.27897,"34717"],"BS86170":["봉산로타리.안성시청",37.00553,127.28071,"33198"],"BS86156":["보개우체국",37.00825,127.28399,"33203"],"BS86155":["안성푸르지오아파트",37.01023,127.28829,"33220"],"BS86929":["안성종합버스터미널",37.01226,127.29204,"34664"],"BS86126":["중앙대.롯데캐슬아파트",37.01256,127.22516,"34151"],"BS218944":["내리사거리",37.00962,127.2191,"34566"],"BS452773":["내리삼거리",37.00476,127.22002,"33244"],"BS86411":["중앙대학로.내리1길",37.00287,127.22194,"34567"],"BS86905":["광덕초등학교",37.00129,127.22057,"33735"],"BS86413":["죽리당촌",36.99883,127.21924,"34136"],"BS86414":["우리공판장",36.99705,127.21885,"34134"],"BS86415":["죽리.외평",36.99504,127.22232,"34148"],"BS457142":["돈도마을",36.9972,127.2223,"34135"],"BS468832":["새내죽길",36.9996,127.22474,"34693"],"BS86953":["대학9길",37.00089,127.22483,"33761"],"BS86412":["중앙대학로.대학1길",37.00265,127.22267,"34568"],"BS452774":["내리삼거리",37.005,127.22026,"33247"],"BS86105":["내리사거리",37.01033,127.22006,"34138"],"BS86483":["안성두원공업고등학교",36.99572,127.24337,"33574"],"BS86177":["하나로마트",37.00738,127.2662,"33133"],"BS86125":["내리사거리",37.0107,127.22012,"34139"],"BS86124":["구문리",37.00987,127.20858,"33064"],"BS86123":["대림동산",37.01005,127.204,"33061"],"BS86122":["롯데마트",37.00852,127.1982,"33347"],"BS86121":["문기",37.00842,127.19581,"33511"],"BS575181":["512스퀘어",37.00654,127.18946,"34213"],"BS86120":["부영아파트.만가대",37.00551,127.1833,"33047"],"BS86119":["한일타운.참아름아파트",37.00279,127.17615,"33670"],"BS86383":["공도중학교.블루밍아파트",37.00132,127.17429,"33038"],"BS86763":["구)공도정류장",36.99947,127.16956,"33024"],"BS504759":["공도시외버스정류장",36.99942,127.16698,"33767"],"BS86488":["황도빌라",37.003,127.16977,"33021"],"BS86484":["용머리초교",37.00189,127.16024,"33620"],"BS421841":["공도기업단지입구",37.00723,127.1567,"33860"],"BS468833":["기업단지로",37.01282,127.16033,"33137"],"BS86820":["입암",37.01653,127.16675,"33470"],"BS86821":["주정동",37.02157,127.16265,"33591"],"BS86822":["입암",37.01661,127.16671,"33472"],"BS468834":["기업단지로",37.01293,127.16033,"33139"],"BS421842":["공도기업단지입구",37.00727,127.15659,"33859"],"BS86485":["용머리초교",37.00195,127.16012,"33572"],"BS86489":["황도빌라",37.00254,127.16943,"33022"],"BS504758":["공도시외버스정류장",36.99937,127.16675,"33545"],"BS86112":["구)공도정류장",36.99935,127.16984,"33023"],"BS86382":["공도중학교",37.00033,127.17312,"33037"],"BS86111":["블루밍.스위첸아파트",37.00239,127.17603,"33039"],"BS86918":["퍼시스",37.00421,127.179,"33487"],"BS86110":["부영아파트.만가대",37.00543,127.18446,"33048"],"BS575182":["에스티아이",37.00657,127.19059,"34220"],"BS86109":["문기초등학교",37.0081,127.19521,"33051"],"BS86108":["롯데마트",37.0083,127.1985,"33346"],"BS86107":["대림동산",37.00973,127.20371,"33060"],"BS86106":["구문리",37.00955,127.20855,"33063"],"BS127606":["하나로마트",37.00733,127.26609,"34715"],"BS86184":["인삼농협앞",37.00522,127.26805,"33145"],"BS325311":["지제역차고지",37.02397,127.07129,"48881"],"BS76314":["평택지제역",37.0184,127.07175,"48130"],"BS76313":["세교삼거리.K2볼링장",37.01021,127.07262,"15616"],"BS76312":["평택성모병원.장미타운",37.008,127.07259,"15617"],"BS76310":["은실",37.00274,127.0746,"15623"],"BS76513":["중앙초교정문앞",37.00093,127.07863,"48175"],"BS325312":["우성아파트",37.00286,127.07958,"48909"],"BS76262":["세교동부영2차아파트",37.00399,127.08263,"15676"],"BS76261":["세교근린공원",37.00269,127.08434,"15693"],"BS76288":["세교동행정복지센터",37.00015,127.08345,"48135"],"BS76307":["통복시장",36.99562,127.08299,"15678"],"BS76306":["평택역.AKPLAZA(제1승강장)",36.99175,127.08661,"15699"],"BS76349":["평택터미널",36.99088,127.08866,"15723"],"BS76348":["박애병원",36.99249,127.08937,"15729"],"BS76353":["평택경찰서사거리",36.99375,127.08972,"15731"],"BS76427":["성동초교",36.99354,127.09351,"15754"],"BS76426":["합정동주공3단지후문앞",36.99283,127.09718,"15774"],"BS76425":["평택여중사거리",36.99231,127.0997,"48075"],"BS76424":["신한중고등학교",36.99133,127.10436,"15801"],"BS76423":["평택고",36.99012,127.10972,"15819"],"BS76422":["시청앞",36.9899,127.11194,"48092"],"BS76421":["참이슬아파트.동일공고",36.99091,127.11761,"15857"],"BS76420":["굿모닝병원.벽산아파트",36.99104,127.12045,"15871"],"BS76440":["효성해링턴플레이스1단지.동방학교",36.99165,127.12517,"15886"],"BS321815":["평택대학교",36.99285,127.13317,"48873"],"BS86380":["우림.주은청설아파트",36.99396,127.13845,"33006"],"BS86115":["진사리입구",36.99479,127.14117,"33009"],"BS86378":["스타필드안성.용이동.삼천리가스",36.99656,127.1441,"33010"],"BS86114":["진등.태산아파트",36.99762,127.15513,"33013"],"BS86113":["안성주은.풍림아파트",36.99769,127.15879,"33017"],"BS250549":["공도시외버스정류장",36.99843,127.16655,"33668"],"BS250548":["공도시외버스정류장",36.9986,127.16645,"33789"],"BS86117":["주은.풍림아파트",36.99805,127.16076,"33018"],"BS86116":["진등.태산아파트",36.9979,127.15605,"33012"],"BS86969":["수도침례신학대학",36.99789,127.15432,"33776"],"BS452408":["스타필드.용이푸르지오2차앞",36.99686,127.14388,"15960"],"BS452406":["진사리입구.푸르지오2차후문",36.99511,127.14126,"15956"],"BS452407":["우림청설아파트",36.99419,127.13824,"15958"],"BS76442":["평택대학교",36.99315,127.13304,"15898"],"BS76441":["동방학교",36.99248,127.12687,"15887"],"BS76438":["벽산아파트.굿모닝병원",36.99122,127.12034,"15870"],"BS76437":["문화아파트.동일공고",36.99096,127.11666,"15852"],"BS76436":["시청앞",36.99016,127.11225,"48277"],"BS76435":["한전앞",36.99082,127.10765,"15815"],"BS76434":["신한중고등학교",36.99148,127.10449,"15802"],"BS76433":["평택여중사거리",36.99205,127.10188,"15794"],"BS76432":["합정동주공3단지후문",36.99277,127.09843,"15776"],"BS76431":["한광고교",36.99356,127.09436,"15761"],"BS76352":["평택경찰서사거리",36.99344,127.08903,"15728"],"BS76351":["박애병원",36.99228,127.08942,"15730"],"BS76350":["평택터미널",36.991,127.08848,"15722"],"BS76338":["평택역.AKPLAZA",36.99266,127.086,"15698"],"BS76337":["통복시장로터리",36.99519,127.08362,"15683"],"BS76452":["세교동행정복지센터",36.99967,127.08321,"15927"],"BS76264":["세교근린공원",37.00282,127.08435,"15691"],"BS76263":["세교동태영아파트",37.00419,127.08255,"15675"],"BS76256":["세교농협사거리",37.0036,127.07969,"15658"],"BS76514":["중앙초교정문앞",37.00096,127.07839,"48174"],"BS76334":["은실",37.00285,127.07482,"15626"],"BS76333":["장미타운",37.00699,127.07262,"15618"],"BS321911":["평택성모병원",37.00832,127.0729,"15008"],"BS76827":["K2볼링장",37.00987,127.07288,"15953"],"BS76332":["평택지제역",37.01947,127.07199,"15615"],"BS86257":["일죽터미널",37.09408,127.4774,"34515"],"BS86377":["일죽중고등학교",37.09286,127.47199,"34495"],"BS86321":["반석아파트",37.09065,127.46897,"34491"],"BS86320":["신촌.월정리",37.08731,127.45733,"34486"],"BS86399":["광장휴게소",37.08386,127.44783,"34484"],"BS86319":["신광",37.08147,127.43961,"34482"],"BS86612":["죽산터미널",37.07609,127.42705,"33314"],"BS86397":["죽산시장",37.07524,127.42363,"33309"],"BS86973":["서부",37.07436,127.42141,"33783"],"BS86363":["관음당.두원대입구",37.07325,127.41837,"33301"],"BS421838":["지에프아파트",37.0696,127.41978,"34681"],"BS86726":["두원공과대학",37.06716,127.42127,"33544"],"BS421837":["지에프아파트",37.0696,127.41988,"34009"],"BS86728":["두원대입구",37.07296,127.41815,"33542"],"BS86362":["죽산삼거리",37.07231,127.41439,"33298"],"BS86361":["두현리하삼",37.07323,127.41068,"33288"],"BS86360":["두현리상삼",37.07382,127.40695,"33281"],"BS86359":["두평리",37.07283,127.40137,"33276"],"BS86358":["용두리",37.07394,127.39482,"33273"],"BS86961":["하나케미칼",37.07411,127.38991,"34698"],"BS86395":["용월지방산업단지",37.07537,127.38385,"33270"],"BS86357":["삼죽",37.07449,127.37613,"33264"],"BS86293":["내강리강촌",37.06994,127.37095,"33250"],"BS86393":["회암",37.06249,127.37015,"33248"],"BS86318":["라촌",37.05962,127.36806,"33246"],"BS86317":["동아방송예술대학교입구",37.05566,127.36506,"33243"],"BS86316":["도촌",37.0514,127.36391,"33241"],"BS455719":["안미장리",37.04343,127.36161,"34666"],"BS86315":["미장리",37.04015,127.35709,"33237"],"BS86314":["마전초등학교",37.02996,127.34314,"33232"],"BS86406":["상삼리",37.02842,127.33742,"34445"],"BS86313":["거리실",37.02033,127.32636,"34421"],"BS86312":["종합운동장입구",37.01799,127.32294,"34397"],"BS86311":["내방리",37.01595,127.31683,"34379"],"BS86153":["평촌.동신초교",37.01274,127.30206,"34331"],"BS86933":["안성종합버스터미널앞",37.0116,127.29327,"34676"],"BS86387":["퍼시스",37.00443,127.17873,"33043"],"BS86880":["금호어울림",37.00443,127.1723,"34634"],"BS76516":["sk아파트.굿모닝병원",36.98972,127.11974,"48055"],"BS76763":["평택공설운동장",36.98653,127.10262,"15932"],"BS76874":["합정대로",36.98746,127.1005,"15986"],"BS76829":["합정초교앞",36.9883,127.09857,"48399"],"BS76824":["신평동주민센터",36.98927,127.09357,"15952"],"BS76518":["평택시외버스터미널(시내)",36.99031,127.08773,"15719"],"BS253541":["합정초등학교",36.98793,127.09872,"48149"],"BS76873":["합정대로",36.98658,127.1018,"15987"],"BS528654":["비전엘크루.굿모닝병원",36.98922,127.11937,"48212"],"BS76515":["굿모닝병원.sk아파트",36.99072,127.12254,"15875"],"BS86898":["금호어울림아파트",37.00417,127.1723,"34633"],"BS86931":["안성종합버스터미널건너편",37.0114,127.29329,"34675"],"BS86154":["평촌.동신초교",37.0136,127.30685,"34332"],"BS86336":["내방리.양협",37.01603,127.31867,"34388"],"BS86335":["안성종합운동장",37.01783,127.32306,"34396"],"BS86334":["거리실",37.0214,127.32746,"34425"],"BS86333":["상삼리",37.02771,127.33773,"34449"],"BS86332":["마전초등학교",37.02976,127.34315,"33234"],"BS86331":["미장리",37.03975,127.3569,"33236"],"BS86330":["안미장리",37.04342,127.36192,"33238"],"BS86329":["도촌",37.05227,127.36436,"33242"],"BS86391":["동아방송예술대학교입구",37.05612,127.36543,"33478"],"BS86328":["라촌",37.05889,127.36761,"33245"],"BS86392":["회암",37.06198,127.37006,"33719"],"BS86297":["내강",37.06985,127.37108,"33249"],"BS86368":["삼죽.두둘기",37.07412,127.37573,"33265"],"BS86396":["용월지방산업단지",37.07525,127.3839,"33562"],"BS86960":["서안석재앞",37.074,127.38977,"34695"],"BS86394":["용두리",37.07384,127.39507,"33274"],"BS86367":["두평",37.07272,127.40145,"33663"],"BS86366":["두현리상삼",37.07369,127.40715,"33282"],"BS86365":["두현리하삼",37.0731,127.4108,"33287"],"BS86624":["죽산삼거리",37.07226,127.41418,"33294"],"BS86727":["두원대입구",37.07291,127.41802,"33543"],"BS86364":["관음당.두원대입구",37.07319,127.41848,"33300"],"BS86974":["서부",37.07408,127.42098,"33784"],"BS86398":["죽산시장",37.07514,127.42366,"33307"],"BS86327":["신광",37.08133,127.44011,"34481"],"BS86756":["광장휴게소",37.08342,127.44769,"34483"],"BS86326":["월정리",37.08688,127.45792,"34485"],"BS316514":["대송",37.08957,127.46811,"34496"],"BS86325":["일죽IC타운",37.09173,127.47072,"34490"],"BS458822":["안성우체국",37.00828,127.26284,"33563"],"BS421613":["서희스타힐스",37.00517,127.25896,"33861"],"BS421614":["아양시티프라디움",37.00743,127.2568,"33864"],"BS421615":["안성CGV",37.01179,127.25761,"33099"],"BS528706":["구문리",37.01006,127.20961,"33872"],"BS86906":["임광그대가아파트1단지앞",37.01223,127.21033,"33749"],"BS86983":["정보빌라",37.01359,127.20897,"33785"],"BS86907":["아방궁사우나앞",37.01458,127.20718,"33742"],"BS86911":["베르빌아파트입구",37.01411,127.20549,"33743"],"BS458485":["가족공원입구",37.01273,127.20274,"33052"],"BS86456":["전원빌라",37.01169,127.20312,"33625"],"BS86909":["대림동산",37.01001,127.20302,"33752"],"BS86459":["서해그랑블아파트.롯데마트",37.00733,127.19828,"33355"],"BS86457":["송정아파트",37.00609,127.20045,"33054"],"BS86458":["서해그랑블아파트.롯데마트",37.00754,127.19826,"33671"],"BS421616":["안성CGV",37.01157,127.25731,"33862"],"BS421617":["아양시티프라디움정문",37.00748,127.25657,"33863"],"BS421618":["서희스타힐스",37.00513,127.25908,"33856"],"BS458829":["안성우체국",37.0085,127.26329,"33681"],"BS86980":["안성종합버스터미널",37.01244,127.29293,"34690"],"BS86179":["안성맞춤공감센터",37.00406,127.27464,"33180"],"BS280672":["가천대",37.45054,127.12618,"05077"],"BS70166":["장지역.가든파이브(중)",37.47899,127.12608,"24015"],"BS70164":["문정법조단지.건영아파트(중)",37.48202,127.12454,"24013"],"BS70162":["문정로데오거리입구(중)",37.48836,127.12135,"24011"],"BS70163":["문정로데오거리입구(중)",37.48916,127.12083,"24012"],"BS70165":["문정법조단지.건영아파트(중)",37.48316,127.12388,"24014"],"BS70167":["장지역.가든파이브(중)",37.47993,127.1255,"24016"],"BS280666":["가천대",37.45098,127.1257,"05088"],"BS86182":["안성맞춤공감센터.서광아파트",37.004,127.27354,"33174"],"BS69979":["매헌시민의숲.양재꽃시장",37.47136,127.03893,"22297"],"BS69912":["말죽거리공원사거리(중)",37.47768,127.0387,"22002"],"BS69914":["양재역.서초문화예술회관(중)",37.482,127.03677,"22004"],"BS110009":["뱅뱅사거리(중)",37.4866,127.03312,"22006"],"BS69918":["래미안아파트.파이낸셜뉴스(중)",37.49129,127.03088,"22008"],"BS69920":["신분당선강남역(중)",37.49514,127.02904,"22010"],"BS82690":["청현마을.수원신갈IC",37.2701,127.09887,"29107"],"BS82688":["영통입구",37.2682,127.0811,"29051"],"BS72616":["아주대입구.우리은행",37.27577,127.04132,"03132"],"BS72554":["수원시청역8번출구.씨네파크.헌혈의집",37.26373,127.03249,"03090"],"BS331617":["수원공용버스터미널(시외)",37.25122,127.02053,"02902"],"BS72564":["수원시청역9번출구.국민연금공단.농협경기본부",37.26297,127.03247,"03091"],"BS72796":["아주대삼거리",37.27417,127.04508,"04023"],"BS72775":["영통입구",37.26867,127.08302,"04170"],"BS82711":["청현마을.수원신갈IC",37.26992,127.09714,"29104"],"BS73638":["판교역.낙생육교.현대백화점",37.39149,127.11119,"07492"],"BS459357":["야탑역.종합버스터미널(광역버스)",37.4128,127.12897,"07643"],"BS73384":["야탑역.종합버스터미널(전면)",37.41158,127.12853,"07201"],"BS73635":["판교역.낙생육교.현대백화점",37.3919,127.11112,"07489"],"BS415923":["호수자이파밀리에.아이원",37.16077,127.10512,"55528"],"BS415925":["동탄호수공원.센트럴시티",37.1668,127.10695,"55524"],"BS326334":["호수부영3차.우미린2차",37.1717,127.1069,"55420"],"BS318481":["반도3차.금강1차",37.18236,127.10264,"36487"],"BS318482":["의료시설부지",37.18761,127.10014,"36477"],"BS248043":["한화.린스트라우스",37.19537,127.09901,"36466"],"BS325281":["동탄역(동측)",37.19971,127.09625,"55399"],"BS247780":["시범예미지.영천유치원",37.20324,127.10875,"55292"],"BS270838":["센트럴푸르지오.호반베르디움2차",37.19813,127.11692,"36458"],"BS271922":["청목초.신안1차",37.19461,127.11946,"36468"],"BS404340":["힐스테이트.호반5차",37.18476,127.12299,"55490"],"BS402347":["창의고",37.18171,127.12209,"55464"],"BS404490":["서희스타힐스.단독주택",37.17329,127.11958,"55488"],"BS74475":["롯데백화점.범계역",37.39045,126.95014,"10047"],"BS331591":["안성종합버스터미널(시외버스)",37.01249,127.29308,"34712"],"BS331592":["공도시외버스정류장",36.99912,127.16664,"34727"],"BS455433":["청주시외버스터미널",36.62555,127.43157,""],"BS331596":["안성종합버스터미널(시외버스)",37.01244,127.29295,"34711"],"BS85991":["농심.대덕우체국",37.01421,127.25039,"33076"],"BS85990":["모산리입구",37.01976,127.24618,"33357"],"BS86461":["공단아파트.강남연립",37.02036,127.24407,"33066"],"BS86972":["안골",37.01788,127.23794,"33779"],"BS86965":["신령리신촌",37.01802,127.22044,"33770"],"BS86964":["신촌",37.02112,127.21906,"33768"],"BS86970":["신령리.누령마을",37.02684,127.22235,"33777"],"BS127329":["신령리.수산나네집",37.02882,127.22437,"33769"],"BS86915":["신촌",37.02114,127.21892,"33750"],"BS86916":["신령리신촌",37.01796,127.22032,"33736"],"BS457111":["롯데케슬아파트후문",37.01542,127.21981,"33716"],"BS463423":["내리사거리.신령리",37.01139,127.21921,"33755"],"BS557769":["봉기동",37.00273,127.19399,"33897"],"BS250369":["소신두리",36.99681,127.19689,"33825"],"BS250370":["대신두리",36.995,127.20053,"33827"],"BS250371":["소신두리",36.9972,127.19638,"33826"],"BS86469":["농협연수원",36.99472,127.19114,"33570"],"BS497857":["안성공도우방아이유쉘아파트",36.99764,127.17018,"33049"],"BS86171":["봉산로타리.안성시청",37.00524,127.27914,"33195"],"BS218951":["내리",36.99845,127.21615,"33820"],"BS218953":["당촌리.비봉주택앞",36.99635,127.21407,"33821"],"BS218954":["당촌1리",36.99531,127.21592,"33822"],"BS218955":["우리공판장",36.99691,127.21876,"33823"],"BS218958":["죽리당촌",36.99881,127.21931,"34137"],"BS218959":["광덕초등학교",37.0014,127.22088,"33734"],"BS218960":["중앙대학로.내리1길",37.00247,127.22216,"33824"],"BS86455":["전원빌라",37.01174,127.20335,"33554"],"BS548623":["상마정앞길",37.0176,127.20287,"33894"],"BS86416":["상마정",37.02074,127.20192,"33058"],"BS86418":["중터",37.02226,127.20181,"33056"],"BS85999":["정자말",37.02706,127.2006,"34094"],"BS86001":["명목리마을",37.03121,127.19686,"33672"],"BS86473":["지남말",37.03463,127.19544,"34077"],"BS127706":["새터말",37.03823,127.19396,"34075"],"BS86876":["덕봉리",37.04152,127.19044,"34627"],"BS539847":["덕봉1리",37.04409,127.19204,"34039"],"BS86878":["덕봉서원",37.04538,127.19311,"34640"],"BS86477":["공단",37.04739,127.19516,"34078"],"BS86770":["절입구",37.05102,127.19642,"34083"],"BS85965":["양성터미널",37.0596,127.19598,"34082"],"BS86771":["절입구",37.0511,127.1963,"34084"],"BS86478":["공단",37.04742,127.19504,"34080"],"BS86879":["덕봉서원",37.04539,127.19298,"34641"],"BS539848":["덕봉1리",37.04409,127.1919,"34040"],"BS86877":["덕봉리",37.04158,127.19034,"34642"],"BS127707":["새터말",37.03832,127.19387,"34076"],"BS86474":["지남말",37.03477,127.19528,"33733"],"BS86471":["송말",37.03133,127.19671,"34086"],"BS86000":["정자말",37.02702,127.20052,"34093"],"BS86419":["중터",37.02215,127.20172,"33055"],"BS86417":["상마정",37.02054,127.20185,"33057"],"BS548619":["상마정앞길",37.01756,127.20283,"33895"],"BS310423":["마정리입구",37.01561,127.20043,"33751"],"BS86859":["방림빌라",37.0168,127.19863,"33448"],"BS310424":["대원사입구",37.01784,127.19707,"33458"],"BS86858":["삼암2리",37.01983,127.19351,"33449"],"BS86481":["방신리새래마을",37.02783,127.18981,"33621"],"BS513135":["이화길",37.02983,127.18818,"33088"],"BS86479":["방신리",37.03592,127.18362,"34061"],"BS86475":["도솔",37.03709,127.18528,"34072"],"BS86011":["덕봉리",37.0412,127.19002,"34042"],"BS86948":["참아름2단지아파트",37.00669,127.17009,"33787"],"BS86490":["서안성농협",37.0105,127.17159,"33027"],"BS86492":["라포르테공도아파트",37.01438,127.17226,"33032"],"BS86015":["신기",37.01861,127.17314,"33034"],"BS86014":["응봉.반제",37.02208,127.17341,"33035"],"BS86494":["반제리",37.0241,127.17511,"33577"],"BS86013":["깊은다리",37.02773,127.17745,"33041"],"BS86012":["방신1리",37.03148,127.18116,"34056"],"BS551482":["동일기계",37.03828,127.18644,"34059"],"BS414506":["사랑의교회",37.06161,127.18724,"33855"],"BS86883":["동항지방산업단지",37.06307,127.18399,"34647"],"BS86385":["삼일운동기념관앞",37.06101,127.17496,"34050"],"BS161459":["오구가네앞",37.05981,127.17091,"34725"],"BS85983":["금노마을",37.05351,127.16475,"34043"],"BS423529":["칠곡리물류단지",37.05073,127.16061,"34069"],"BS85982":["방삼",37.04886,127.15831,"34033"],"BS85981":["용소.직사.칠곡저수지",37.04391,127.15106,"34027"],"BS85980":["복해",37.04105,127.14652,"34022"],"BS85979":["강문",37.04105,127.14229,"34016"],"BS85978":["대소마을",37.04219,127.13506,"33514"],"BS86792":["지문리입구",37.04171,127.13179,"34006"],"BS85977":["원곡면행정복지센터",37.03977,127.12916,"34005"],"BS471522":["원곡제일오투그란데아파트",37.037,127.12905,"34011"],"BS471523":["원곡제일오투그란데아파트",37.03654,127.12874,"34327"],"BS85974":["원곡면행정복지센터",37.03911,127.12913,"34004"],"BS86793":["지문리입구",37.04162,127.13185,"34007"],"BS85973":["대소마을",37.04206,127.13483,"33515"],"BS85972":["강문",37.04095,127.14239,"34017"],"BS85971":["복해",37.04094,127.14669,"34023"],"BS85970":["용소.직사.칠곡저수지",37.04385,127.1512,"34026"],"BS85969":["방삼",37.0492,127.15891,"34032"],"BS423544":["칠곡리물류단지",37.05132,127.16153,"33866"],"BS537139":["금노마을",37.05308,127.16451,"34038"],"BS162094":["혜인물류앞",37.05677,127.16866,"34724"],"BS86386":["오구가네",37.05941,127.17091,"34049"],"BS86885":["삼일운동기념관앞",37.06102,127.17566,"34624"],"BS86882":["동항지방산업단지",37.06311,127.18372,"34648"],"BS414507":["사랑의교회",37.06143,127.18741,"33854"],"BS86010":["덕봉리",37.04106,127.18953,"34067"],"BS551483":["동일기계",37.03874,127.18644,"34057"],"BS86476":["도솔",37.03723,127.1853,"34073"],"BS86480":["방신리",37.03603,127.18356,"34062"],"BS86009":["방신1리",37.03155,127.18107,"34055"],"BS86008":["깊은다리",37.02745,127.17724,"33042"],"BS86495":["반제리",37.02419,127.17503,"33618"],"BS86007":["응봉.반제",37.02216,127.17333,"33036"],"BS86006":["신기",37.01856,127.173,"33033"],"BS86493":["라포르테공도아파트",37.01325,127.17186,"33031"],"BS86962":["서안성농협",37.00963,127.17107,"34697"],"BS86491":["참아름2단지",37.00651,127.16983,"33026"],"BS86510":["팔머리",36.98987,127.15795,"33016"],"BS531004":["신용정",36.98499,127.15575,"33873"],"BS531005":["합성촌",36.98534,127.152,"33874"],"BS86511":["신용정",36.98493,127.15576,"33014"],"BS86509":["팔머리",36.98989,127.15814,"33015"],"BS160239":["인천터미널",37.44138,126.70133,"39808"],"BS331595":["공도시외버스정류장",36.99911,127.1665,"34726"],"BS331622":["동아방송예술대학교시외버스정류장",37.05705,127.36096,"34710"],"BS226621":["인천터미널",37.44137,126.70152,"39856"],"BS86181":["안성맞춤공감센터",37.00393,127.27572,"33182"]}};
+/* f1/l1 기점 첫차·막차, f2/l2 회차지 첫차·막차, iv 평일 배차, ivw 주말 배차 */
+const META = {
+  B7930:{kind:"gen",to:"안성종합버스터미널 ↔ 810관원형관앞",f1:"07:30",l1:"22:00",f2:"08:00",l2:"22:15",iv:"20분"},
+  B75650:{kind:"dir",to:"한경대 ↔ 신분당선강남역",f1:"05:00",l1:"22:30",f2:"06:20",l2:"23:40",iv:"10~40분",ivw:"20~60분"},
+  B82021:{kind:"dir",to:"안성터미널 ↔ 문정로데오거리",f1:"05:00",l1:"22:00",f2:"06:30",l2:"23:30",iv:"40~50분"},
+  B70634:{kind:"dir",to:"안성터미널 ↔ 야탑역·종합버스터미널",f1:"05:30",l1:"22:00",f2:"06:50",l2:"23:30",iv:"40~60분",ivw:"60~70분"},
+  B70633:{kind:"dir",to:"안성터미널 ↔ 수원공용버스터미널",f1:"05:20",l1:"22:10",f2:"06:30",l2:"23:40",iv:"20~40분",ivw:"30~50분"},
+  B72168:{kind:"dir",to:"안성터미널 ↔ 동탄역(동측)",f1:"05:30",l1:"22:20",f2:"06:40",l2:"23:30",iv:"50~60분",ivw:"70~80분"},
+  B80590:{kind:"dir",to:"안성터미널 ↔ 롯데백화점·범계역",f1:"05:00",l1:"21:00",f2:"06:30",l2:"22:30",iv:"80~90분",ivw:"120~150분"},
+  B7929:{kind:"gen",to:"안성터미널 ↔ 평택시외버스터미널",f1:"05:00",l1:"23:10",f2:"06:00",l2:"24:00",iv:"10분"},
+  B7289:{kind:"gen",to:"평택 지제역 ↔ 안성 봉산로터리",f1:"04:40",l1:"23:00",f2:"05:40",l2:"23:40",iv:"9~12분",ivw:"13~14분"},
+  B7928:{kind:"gen",to:"일죽터미널 ↔ 평택시외버스터미널",f1:"05:15",l1:"22:00",f2:"07:00",l2:"23:30",iv:"30~40분"},
+  B7933:{kind:"gen",to:"안성터미널 순환 (내리·광덕초)",f1:"06:10",l1:"21:50",iv:"20~40분"},
+  B7938:{kind:"gen",to:"안성터미널 ↔ 서해그랑블·롯데마트",f1:"06:30",l1:"21:20",f2:"06:55",l2:"21:50",iv:"40~50분"},
+  B13385:{kind:"int",to:"인천터미널 ↔ 동아방송예술대학교",f1:"06:40",l1:"20:00",f2:"06:40",l2:"20:40",iv:"하루 몇 회"},
+  B74486:{kind:"int",to:"인천터미널 ↔ 동아방송예술대학교",f1:"06:40",l1:"20:00",f2:"06:40",l2:"19:30",iv:"하루 몇 회"},
+  B60925:{kind:"int",to:"안성터미널 ↔ 청주시외버스터미널",iv:"하루 몇 회"},
+  B7940:{kind:"gen",rare:1,to:"봉산로터리 ↔ 신령리",f1:"06:20",l1:"18:05",iv:"180~290분"},
+  B7941:{kind:"gen",rare:1,to:"하나로마트 ↔ 공도중학교",f1:"07:05",l1:"15:10",f2:"07:20",l2:"15:40",iv:"하루 2회 안팎"},
+  B24536:{kind:"gen",rare:1,to:"봉산로터리 순환 (내리)",f1:"08:20",l1:"18:10",iv:"120~480분"},
+  B7942:{kind:"gen",rare:1,to:"하나로마트 ↔ 양성터미널",f1:"06:50",l1:"21:10",f2:"07:20",l2:"21:40",iv:"170~420분"},
+  B7945:{kind:"gen",rare:1,to:"안성두원공고 ↔ 주정동",f1:"07:00",l1:"17:10",f2:"07:35",l2:"18:00",iv:"하루 2회 안팎"},
+  B7944:{kind:"gen",rare:1,to:"하나로마트 ↔ 양성터미널",f1:"08:10",l1:"12:30",f2:"08:30",l2:"12:55",iv:"210분"},
+  B7946:{kind:"gen",rare:1,to:"안성터미널 ↔ 원곡제일오투그란데",f1:"09:25",l1:"19:10",f2:"10:30",l2:"20:05",iv:"140~190분"},
+  B7947:{kind:"gen",rare:1,to:"안성터미널 ↔ 양성터미널",f1:"06:15",l1:"21:40",f2:"07:00",l2:"22:20",iv:"90~360분"},
+  B7949:{kind:"gen",rare:1,to:"안성터미널 ↔ 합성촌",f1:"06:20",l1:"16:40",f2:"06:55",l2:"17:25",iv:"200~360분"}
+};
+const METRO = new Set(["4305","4401","8200","8201","8202","8204","8308","8830","8830-1"]);
+/* 실시간 '곧 도착'을 보여줄 정류장 */
+/* 길찾기 출발 위치 */
+const ORIGINS = {
+  b801:{name:"801관",lat:37.00456,lng:127.22936}, b810:{name:"810관",lat:37.00214,lng:127.22865},
+  b903:{name:"903관",lat:37.0053,lng:127.2287}, dorm:{name:"생활관·기숙사",lat:37.00707,lng:127.2284},
+  gate:{name:"정문·중앙대입구",lat:37.0122,lng:127.22652}, lotte:{name:"롯데캐슬아파트",lat:37.01268,lng:127.22603}
+};
+const CAMPUS = {lat:37.0065,lng:127.2280};
+const SIDE_NAME = { BS86126:"서울·평택 방면", BS86127:"안성시내 방면", BS86129:"나가는 방향", BS86131:"810관 방향",
+  BS86128:"롯데캐슬 방향", BS86132:"801관 방향", BS86190:"안성시내 방면", BS86191:"캠퍼스 방면",
+  BS86105:"공도 방면", BS86125:"공도 방면" };
 
-/* ===== 4. 공통 함수 ===== */
-const $ = (s, r = document) => r.querySelector(s);
-const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const toMin = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
-const pad = n => String(n).padStart(2, "0");
-const WD = ["일", "월", "화", "수", "목", "금", "토"];
-const eun = w => { const c = w.charCodeAt(w.length - 1) - 0xAC00; return c >= 0 && c % 28 !== 0 ? "이에요" : "예요"; };
-const kmap = (path, name, lat, lng) => lat == null ? `https://map.kakao.com/link/search/${encodeURIComponent(name)}` : `https://map.kakao.com/link/${path}/${encodeURIComponent(name)},${lat},${lng}`;
-
-// 시간 계산은 항상 한국 시간 기준 (기기 시간대를 쓰지 않는다)
-function seoulNow() {
-  const p = {};
-  new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hourCycle: "h23", weekday: "short" })
-    .formatToParts(new Date()).forEach(x => p[x.type] = x.value);
-  const dow = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(p.weekday);
-  return { ymd: `${p.year}-${p.month}-${p.day}`, dow, hh: +p.hour, mm: +p.minute, min: +p.hour * 60 + +p.minute };
+/* ======================= 공통 ======================= */
+const $ = id => document.getElementById(id);
+const toMin = s => { const [h,m]=s.split(":").map(Number); return h*60+m; };
+const pad = n => String(n).padStart(2,"0");
+const WD = ["일","월","화","수","목","금","토"];
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:v; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} } };
+function seoulNow(){
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23",weekday:"short"}).formatToParts(new Date()).map(x=>[x.type,x.value]));
+  const wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(p.weekday);
+  return { ymd:`${p.year}-${p.month}-${p.day}`, mo:+p.month, d:+p.day, h:+p.hour, mi:+p.minute, s:+p.second, wd, min:+p.hour*60+ +p.minute };
 }
-function etaText(diff) {
-  if (diff <= 0) return "지금 출발해요";
-  if (diff < 60) return `${diff}분 후`;
-  const h = Math.floor(diff / 60), m = diff % 60;
-  return m ? `${h}시간 ${m}분 후` : `${h}시간 후`;
-}
+function fmtLeft(min){ if(min<1) return "곧 출발"; if(min<60) return `${min}분 후`; return `${Math.floor(min/60)}시간 ${min%60}분 후`; }
+function km(a,b){ const R=6371, dLa=(b.lat-a.lat)*Math.PI/180, dLo=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+const walkMin = d => Math.max(1, Math.round(d*1.3/4.5*60));   // 실제 걷는 길은 직선보다 30% 길다고 봐요
+const stopLink = id => `https://map.kakao.com/?busStopId=${id}`;
+const lineLink = id => `https://map.kakao.com/?busId=${id}`;
+const searchLink = q => `https://map.kakao.com/link/search/${encodeURIComponent(q)}`;
 
-/* ===== 5. 화면 전환 ===== */
-const ui = Object.assign({ screen: "shuttle", filter: "all", tab: "bus", day: null }, store.get("dvb-ui", {}));
-const saveUi = () => store.set("dvb-ui", { screen: ui.screen, filter: ui.filter, tab: ui.tab });
-
-function setScreen(s) {
-  ui.screen = s; saveUi();
-  $("#screen-shuttle").hidden = s !== "shuttle";
-  $("#screen-city").hidden = s !== "city";
-  document.querySelectorAll(".screens button").forEach(b => b.setAttribute("aria-selected", b.dataset.screen === s));
-  if (s === "city") { renderProvider(); mapInit().catch(() => {}); refreshOpenPlaces(); }
-}
-
-/* ===== 6. 셔틀 렌더 ===== */
-function dayState(now) {
-  const holiday = HOLIDAYS[now.ymd] || "";
-  const weekend = now.dow === 0 || now.dow === 6;
-  const inPeriod = now.ymd >= PERIOD.start && now.ymd <= PERIOD.end;
-  return { holiday, weekend, inPeriod, runs: inPeriod && !weekend && !holiday, todayKey: now.dow === 5 ? "fri" : "mt" };
-}
-function listFor(route, day) { return route.times.filter(x => x.c[day] > 0); }
-
-function renderShuttle() {
-  const now = seoulNow(), ds = dayState(now);
-  if (!ui.day) ui.day = ds.todayKey;
-
-  let msg = "";
-  if (!ds.inPeriod) msg = "지금은 운행 기간(2026. 9. 1. ~ 12. 21.)이 아니에요. 아래는 학기 중 시간표예요.";
-  else if (ds.holiday) msg = `오늘은 ${ds.holiday}${eun(ds.holiday)}. 시간표에는 평일 운행만 나와 있어요. 셔틀 운행 여부는 학교 공지를 확인하세요.`;
-  else if (ds.weekend) msg = "오늘은 주말이에요. 시간표에는 평일 운행만 나와 있어요. 셔틀 운행 여부는 학교 공지를 확인하세요.";
-  $("#banner").hidden = !msg; $("#banner").textContent = msg;
-
-  $("#filters").innerHTML = FILTERS.map(([k, n]) => `<button class="pill" data-filter="${k}" aria-pressed="${ui.filter === k}">${n}</button>`).join("");
-  $("#soon").innerHTML = ROUTES.filter(r => ui.filter === "all" || r.org === ui.filter).map(r => {
-    const list = listFor(r, ds.todayKey);
-    const next = ds.runs ? list.find(x => toMin(x.t) >= now.min) : null;
-    const right = !ds.runs ? `<b>-</b>오늘 운행 없음` : next ? `<b>${next.t}</b>${etaText(toMin(next.t) - now.min)}` : `오늘 운행 끝`;
-    return `<div class="li${next ? " go" : ""}"><span class="badge">${r.badge}</span><div class="m"><div class="t">${esc(r.title)}</div><div class="s">${esc(r.sub)}</div></div><div class="r">${right}</div></div>`;
-  }).join("") || `<div class="li"><div class="m msg">해당하는 노선이 없어요.</div></div>`;
-
-  $("#tabs").innerHTML = TABS.map(([k, n]) => `<button role="tab" data-tab="${k}" aria-selected="${ui.tab === k}">${n}</button>`).join("");
-  $("#panel").innerHTML = renderPanel(ui.tab, now, ds);
+/* ======================= 모드 ======================= */
+let mode = store.get("dvb-mode","shuttle");
+if(location.hash==="#city") mode="city"; if(location.hash==="#shuttle") mode="shuttle";
+function setMode(m){
+  mode=m; store.set("dvb-mode",m);
+  document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-selected", b.dataset.mode===m));
+  $("m-shuttle").hidden = m!=="shuttle"; $("m-city").hidden = m!=="city";
+  if(m==="city"){ ensureMap(); refreshRealtime(); loadHeadways(); }
+  tick();
 }
 
-function renderPanel(tab, now, ds) {
-  const live = ds.runs && ui.day === ds.todayKey;
-  const rs = ROUTES.filter(r => r.tab === tab);
-  const cls = (t, next) => (live && toMin(t) < now.min ? "past" : "") + (next ? " next" : "");
-  let html = "";
-  if (tab === "bus") {
-    html += `<div class="dayp">${[["mt", "월~목"], ["fri", "금"]].map(([k, n]) => `<button data-day="${k}" aria-pressed="${ui.day === k}">${n}</button>`).join("")}</div>`;
-    rs.forEach(r => {
-      const nextT = live ? (listFor(r, ui.day).find(x => toMin(x.t) >= now.min) || {}).t : null;
-      html += `<h3 class="rt">${esc(r.head)}</h3><div class="path">${esc(r.path)}</div>
-        <table><thead><tr><th>출발</th><th class="${ui.day === "mt" ? "sel" : ""}">월~목</th><th class="${ui.day === "fri" ? "sel" : ""}">금</th></tr></thead><tbody>
-        ${r.times.map(x => `<tr class="${cls(x.t, x.t === nextT)}"><td class="tm">${x.t}</td>
-          ${["mt", "fri"].map(d => `<td class="${x.c[d] ? "" : "off"} ${ui.day === d ? "sel" : ""}">${x.c[d] ? x.c[d] + "대" : "운행 안 함"}</td>`).join("")}</tr>`).join("")}
-        </tbody></table>`;
-    });
-  } else if (tab === "loop") {
-    const r = rs[0], nextT = live ? (r.times.find(x => toMin(x.t) >= now.min) || {}).t : null;
-    html += `<h3 class="rt">${esc(r.head)}</h3><div class="path">${esc(r.path)}</div>
-      <table><thead><tr><th>회차</th><th>정문</th><th>원형관(810관)</th></tr></thead><tbody>
-      ${r.times.map((x, i) => `<tr class="${cls(x.t, x.t === nextT)}"><td>${i + 1}</td><td class="tm">${x.t}</td>
-        <td class="tm">${x.arr}${x.warn ? ` <span class="warnmark" title="${esc(x.warn)}">⚠</span>` : ""}</td></tr>`).join("")}
-      </tbody></table><div class="hint">⚠ ${esc(r.times.find(x => x.warn).warn)}</div>`;
+/* ======================= 셔틀 렌더 ======================= */
+let sf = store.get("dvb-sf","all");
+let activeTab = store.get("dvb-tab","commute"); if(!ROUTES.some(r=>r.id===activeTab)) activeTab="commute";
+let pickDay = null;
+function dayType(n){
+  if(n.ymd < PERIOD.start || n.ymd > PERIOD.end) return {run:false, why:"운행 기간 아님"};
+  if(n.wd===0||n.wd===6) return {run:false, why:"주말 미운행"};
+  return {run:true, kind: n.wd===5 ? "fr" : "mt"};
+}
+const runsToday = (d,kind) => d.runs.filter(r => !r.n || r.n[kind] > 0);
+function renderShuttleBoard(n){
+  const dt = dayType(n), now = n.h*60+n.mi+n.s/60, out=[];
+  ROUTES.forEach(r=>r.dirs.forEach(d=>{
+    if(sf!=="all" && d.from!==sf) return;
+    let cls="row", big="", small="";
+    if(!dt.run){ cls+=" off"; big=dt.why; }
+    else{
+      const list = runsToday(d,dt.kind).filter(x=>toMin(x.t) >= Math.floor(now));
+      if(!list.length){ cls+=" off"; big="오늘 운행 끝"; }
+      else{
+        const nx=list[0], diff=Math.max(0,Math.ceil(toMin(nx.t)-now));
+        const cnt = nx.n && nx.n[dt.kind]>1 ? ` · ${nx.n[dt.kind]}대` : "";
+        big = nx.t.padStart(5,"0");
+        small = `${diff<=10?'<span class="soon">곧 출발</span> ':""}${fmtLeft(diff)} · ${list[1]?"다음 "+list[1].t:"막차"}${cnt}`;
+      }
+    }
+    out.push(`<div class="${cls}"><span class="ln shut">${r.label}</span><div class="what"><b>${d.title.replace(/^.*· /,"")}</b><span>${SHUTTLE_STOPS[d.stop].name} 출발</span></div><div class="when"><div class="big">${big}</div>${small?`<div class="small">${small}</div>`:""}</div></div>`);
+  }));
+  $("shuttle-rows").innerHTML = out.join("") || `<div class="board-empty">이 지역에서 출발하는 셔틀이 없어요.</div>`;
+}
+function renderTabs(){
+  $("tabs").innerHTML = ROUTES.map(r=>`<button class="tab" role="tab" id="tab-${r.id}" data-tab="${r.id}" aria-selected="${r.id===activeTab}">${r.label}</button>`).join("");
+}
+function renderPanel(n){
+  const r = ROUTES.find(x=>x.id===activeTab), dt = dayType(n), now = n.h*60+n.mi;
+  const isC = r.id==="commute", kind = pickDay || (dt.run ? dt.kind : "mt"), live = dt.run && (!isC || kind===dt.kind);
+  let h = isC ? `<div class="chips" role="group" aria-label="요일"><button class="chip" id="d-mt" data-d="mt" aria-pressed="${kind==="mt"}">월~목</button><button class="chip" id="d-fr" data-d="fr" aria-pressed="${kind==="fr"}">금</button></div>` : "";
+  h += `<div class="dirs">` + r.dirs.map(d=>{
+    const names = d.path.map((k,i)=> i===d.path.length-1 && d.pathEnd ? d.pathEnd : SHUTTLE_STOPS[k].name);
+    const valid = isC ? d.runs.filter(x=>x.n[kind]>0) : d.runs;
+    const nextT = live ? (valid.find(x=>toMin(x.t)>=now)||{}).t : null;
+    const cls = x => (isC && x.n[kind]===0) ? "past" : !live ? "" : x.t===nextT ? "next" : toMin(x.t)<now ? "past" : "";
+    let head, rows;
+    if(d.loop){ head=`<tr><th>회차</th><th>정문</th><th>원형관</th></tr>`;
+      rows=d.runs.map((x,i)=>`<tr class="${cls(x)}"><td>${i+1}</td><td class="t">${x.t}</td><td class="t">${x.t2}${x.note?' <span class="fn">*</span>':""}</td></tr>`).join(""); }
+    else if(isC){ head=`<tr><th>출발</th><th>월~목</th><th>금</th></tr>`;
+      const c=v=>v?`${v}대`:`<span class="dash">운행 안 함</span>`;
+      rows=d.runs.map(x=>`<tr class="${cls(x)}"><td class="t">${x.t}</td><td>${c(x.n.mt)}</td><td>${c(x.n.fr)}</td></tr>`).join(""); }
+    else { head=`<tr><th>출발</th><th></th></tr>`;
+      rows=d.runs.map(x=>`<tr class="${cls(x)}"><td class="t">${x.t}</td><td class="meta">${x.t===nextT?"다음 버스":""}</td></tr>`).join(""); }
+    return `<div class="dir"><h3>${d.title}</h3><p class="path">${names.join(" → ")}</p><div class="tbl-wrap"><table>${head}${rows}</table></div></div>`;
+  }).join("") + `</div>`;
+  if(r.id==="loop") h += `<p class="fn">* 7회차 원형관 12:55는 원문 그대로예요. 11:55의 오기일 수 있어요.</p>`;
+  if(r.id==="pt") h += `<p class="meta">각 정류장에서 출발하는 시각이에요.</p>`;
+  $("panel").innerHTML = h; $("panel").setAttribute("aria-labelledby","tab-"+r.id);
+}
+function renderShuttleStops(){
+  $("shuttle-stops").innerHTML = Object.values(SHUTTLE_STOPS).map(s=>`<div><span>${s.name}<small>${s.sub}</small></span><a href="${searchLink(s.q)}" target="_blank" rel="noopener">지도 ↗</a></div>`).join("");
+}
+
+/* ======================= 실시간 (공공데이터포털 직접 호출) ======================= */
+const DG_API = {
+  gbis_station: "https://apis.data.go.kr/6410000/busstationservice/v2/getBusStationListv2",
+  gbis_station_around: "https://apis.data.go.kr/6410000/busstationservice/v2/getBusStationAroundListv2",
+  gbis_arrival: "https://apis.data.go.kr/6410000/busarrivalservice/v2/getBusArrivalListv2"
+};
+const DG_NAME = { gbis_station:"경기도_정류소 조회 · 이름/번호", gbis_station_around:"경기도_정류소 조회 · 주변", gbis_arrival:"경기도_버스도착정보 조회" };
+const DG_STATUS = Object.fromEntries(Object.keys(DG_API).map(k=>[k,{state:"untested",msg:""}]));
+const AUTH_HINT = [["SERVICE_KEY_IS_NOT_REGISTERED_ERROR","활용신청이 안 됐거나 아직 반영 전이에요 (승인 후 1~2시간)"],
+  ["SERVICE ACCESS DENIED","이 API 활용신청이 필요해요"],["LIMITED_NUMBER_OF_SERVICE_REQUESTS","오늘 호출 한도를 다 썼어요"],["Unauthorized","키가 맞지 않아요"]];
+const jget = (k,d) => { try{ return JSON.parse(store.get(k,"")) || d; }catch(e){ return d; } };
+const jset = (k,v) => store.set(k, JSON.stringify(v));
+const DGC = jget("dvb-dgcache", {gbis:{}});
+const saveDGC = () => jset("dvb-dgcache", DGC);
+function countCall(api){ const day=seoulNow().ymd, c=jget("dvb-calls",{day,n:{}}); if(c.day!==day){ c.day=day; c.n={}; } c.n[api]=(c.n[api]||0)+1; jset("dvb-calls",c); }
+function usedCalls(api){ const c=jget("dvb-calls",{day:"",n:{}}); return c.day===seoulNow().ymd ? (c.n[api]||0) : 0; }
+const asList = x => x==null||x==="" ? [] : Array.isArray(x) ? x : [x];
+const numv = (v,d=null) => v===""||v==null||isNaN(+v) ? d : Math.round(+v);
+
+async function dg(api, params){
+  if(!KEYS.DATA_GO_KR) throw new Error("공공데이터포털 키가 없어요");
+  countCall(api);
+  const key = KEYS.DATA_GO_KR.includes("%") ? KEYS.DATA_GO_KR : encodeURIComponent(KEYS.DATA_GO_KR);
+  const extra = {format:"json"};
+  let raw;
+  try{ const r = await fetch(`${DG_API[api]}?serviceKey=${key}&${new URLSearchParams({...params,...extra})}`); raw = (await r.text()).trim(); }
+  catch(e){ DG_STATUS[api]={state:"fail",msg:"연결 실패"}; throw new Error("연결 실패"); }
+  for(const [k,m] of AUTH_HINT) if(raw.slice(0,500).includes(k)){ DG_STATUS[api]={state:"fail",msg:m}; throw new Error(m); }
+  let code="0", msg="", body={};
+  if(raw.startsWith("{")){
+    const j=JSON.parse(raw), resp=j.response||j, head=resp.msgHeader||resp.header||{};
+    code=String(head.resultCode??"0"); msg=head.resultMessage||head.resultMsg||""; body=resp.msgBody||resp.body||{};
   } else {
-    rs.forEach(r => {
-      const nextT = live ? (r.times.find(x => toMin(x.t) >= now.min) || {}).t : null;
-      html += `<h3 class="rt">${esc(r.head)}</h3><div class="path">${esc(r.path)}</div>
-        <div class="tgrid">${r.times.map(x => `<div class="tg ${cls(x.t, x.t === nextT)}">${x.t}</div>`).join("")}</div>`;
-    });
+    const x=new DOMParser().parseFromString(raw,"text/xml");
+    const t=s=>{ const e=x.querySelector(s); return e?e.textContent:""; };
+    code=t("resultCode")||"0"; msg=t("resultMsg")||t("resultMessage");
+    const items=[...x.querySelectorAll("item")].map(it=>Object.fromEntries([...it.children].map(c=>[c.tagName,c.textContent])));
+    body={items:{item:items}};
+    const mb=x.querySelector("msgBody"); if(mb) [...mb.children].forEach(c=>{ (body[c.tagName]=body[c.tagName]||[]).push(Object.fromEntries([...c.children].map(z=>[z.tagName,z.textContent]))); });
   }
-  return html;
+  if(!["0","00","4","04"].includes(code)){ DG_STATUS[api]={state:"fail",msg:`${code} ${msg}`}; throw new Error(`${code} ${msg}`); }
+  DG_STATUS[api]={state:"ok",msg:""};
+  return body;
 }
 
-function renderGuide() {
-  $("#stops").innerHTML = STOPS.map(([n, s, q]) => `<div class="stop"><div><b>${esc(n)}</b><span>${esc(s)}</span></div><a href="${kmap("search", q)}" target="_blank" rel="noopener">지도 ↗</a></div>`).join("");
-  $("#contacts").innerHTML = CONTACTS.map(c => `<div class="contact"><span>${esc(c.label)} ${esc(c.who)}</span>${c.tels.map(t => `<code>${t}</code><button class="copy" data-copy="${t}">복사</button>`).join("")}</div>`).join("");
+const LOOKUP_LOG = [];   // 정류장 찾기 과정 (연결 상태에 표시)
+const nname = x => String(x||"").replace(/\(.*?\)|[\s.·]/g,"");
+async function gbisSid(s){
+  const [name,lat,lng,no0]=s, no=no0||`${name}@${(+lat).toFixed(4)},${(+lng).toFixed(4)}`;
+  if(DGC.gbis[no]) return DGC.gbis[no];
+  const cand=[], note=[];
+  const add=(items,how)=>{ note.push(`${how} ${items.length}건`); items.forEach(it=>cand.push(it)); };
+  // 1) 좌표 주변 정류장  2) 정류소번호  3) 이름
+  try{ add(asList((await dg("gbis_station_around",{x:lng,y:lat})).busStationAroundList),"주변"); }catch(e){ note.push("주변 실패: "+e.message); }
+  const pick=()=>{
+    const d=it=>km({lat,lng},{lat:+it.y,lng:+it.x})*1000;
+    const byNo=cand.find(it=>no0 && String(it.mobileNo||"").replace(/\D/g,"")===no0);
+    if(byNo) return byNo;
+    const same=cand.filter(it=>nname(it.stationName)===nname(name)).sort((a,b)=>d(a)-d(b));
+    if(same.length && d(same[0])<150) return same[0];
+    const near=cand.slice().sort((a,b)=>d(a)-d(b))[0];
+    return near && d(near)<40 ? near : null;
+  };
+  let best=pick();
+  for(const kw of [no0,name]){ if(best||!kw) continue;
+    try{ add(asList((await dg("gbis_station",{keyword:kw})).busStationList),`검색 '${kw}'`); }catch(e){ note.push("검색 실패: "+e.message); }
+    best=pick(); }
+  const near=cand.slice().sort((a,b)=>km({lat,lng},{lat:+a.y,lng:+a.x})-km({lat,lng},{lat:+b.y,lng:+b.x}))[0];
+  LOOKUP_LOG.unshift(`${name}(${no0||"-"}): ${note.join(", ")} → ${best?`찾음 ${best.stationName} [${best.mobileNo}]`:`못 찾음${near?` (가장 가까운 곳: ${near.stationName} [${String(near.mobileNo||"").trim()}] ${Math.round(km({lat,lng},{lat:+near.y,lng:+near.x})*1000)}m)`:""}`}`);
+  LOOKUP_LOG.length=Math.min(LOOKUP_LOG.length,8);
+  if(!best) return null;
+  DGC.gbis[no]=String(best.stationId); saveDGC(); return DGC.gbis[no];
 }
+async function gbisArrivals(s){
+  const sid=await gbisSid(s); if(!sid) throw new Error("경기도 정보에서 정류장을 못 찾았어요");
+  const b=await dg("gbis_arrival",{stationId:sid});
+  return { source:"경기도 BIS", items: asList(b.busArrivalList).map(it=>({
+    route:String(it.routeName||it.routeId||"").trim(), routeId:String(it.routeId||""), dest:it.routeDestName||"",
+    min1:numv(it.predictTime1), min2:numv(it.predictTime2), left1:numv(it.locationNo1), left2:numv(it.locationNo2),
+    crowd1:numv(it.crowded1,0), crowd2:numv(it.crowded2,0), seat1:numv(it.remainSeatCnt1,-1), seat2:numv(it.remainSeatCnt2,-1), plate1:it.plateNo1||"" })) };
+}
+async function arrivalsFor(s){ return await gbisArrivals(s); }
 
-/* ===== 7. 실시간 (공공데이터 호출 dg(), 정류장 찾기 gbisSid()) ===== */
-// ⚠ 경기도 GBIS v2 응답 형식은 키로 직접 확인하지 못했어요. 형식이 다르면 이 구간만 고쳐요.
-const GBIS = "https://apis.data.go.kr/6410000";
-const usage = () => { const u = store.get("dvb-usage", {}); const t = seoulNow().ymd; return u.d === t ? u : { d: t, n: 0 }; };
-function bumpUsage() { const u = usage(); u.n++; store.set("dvb-usage", u); renderKeyNote(); }
-const safeDecode = k => { try { return decodeURIComponent(k); } catch (e) { return k; } };
-
-async function dg(path, params) {
-  if (!KEYS.DATA_GO_KR) throw new Error("NOKEY");
-  const q = new URLSearchParams({ ...params, format: "json" });
-  bumpUsage();
-  const r = await fetch(`${GBIS}/${path}?serviceKey=${encodeURIComponent(safeDecode(KEYS.DATA_GO_KR))}&${q}`);
-  let j;
-  try { j = await r.json(); } catch (e) { throw new Error("BADFORMAT"); }
-  const h = j && j.response && j.response.msgHeader;
-  if (h && String(h.resultCode) !== "0" && String(h.resultCode) !== "4") throw new Error("API:" + (h.resultMessage || h.resultCode));
-  const body = j && j.response && j.response.msgBody;
-  if (Array.isArray(body)) return body;
-  if (body && typeof body === "object") return Object.values(body).find(Array.isArray) || [];
-  return [];
+const RT = { state: KEYS.DATA_GO_KR ? "unknown" : "nokey", data:{}, at:0, msg:"", source:"" };   // data[정류소번호]
+/* 실시간을 보여줄 정류장 (양방향). 같은 이름의 반대 방향 정류장은 묶어서 보여줘요.
+   좌표는 대략값이어도 돼요. 경기도 '주변 정류소' 조회로 정확한 위치와 다른 방향 정류장을 찾아요. */
+const PLACES = [
+  { key:"lotte", name:"중앙대.롯데캐슬아파트", short:"롯데캐슬", lat:37.01268, lng:127.22603, where:"캠퍼스 밖 큰길",
+    dirs:[ {no:"34151", lat:37.01256, lng:127.22516, to:"내리사거리 방면 · 서울·평택·공도행"},
+           {no:"34157", lat:37.01279, lng:127.2269,  to:"대덕면행정복지센터 방면 · 안성시내·터미널행"} ] },
+  { key:"univ9", name:"대학9길", short:"대학9길", lat:37.00089, lng:127.22483, where:"내리 마을 안쪽 길",
+    dirs:[ {no:"33761", lat:37.00089, lng:127.22483, to:"중앙대학로.대학1길 방면"} ] },
+  { key:"univ1", name:"중앙대학로.대학1길", short:"대학1길", lat:37.00265, lng:127.22267, where:"중앙대학로",
+    dirs:[ {no:"34568", lat:37.00265, lng:127.22267, to:"내리삼거리 방면"} ] },
+  { key:"ipgu", name:"중앙대입구", short:"중앙대입구", lat:37.0122, lng:127.22652, where:"캠퍼스 입구", only:true,
+    dirs:[ {no:"34153", lat:37.0122, lng:127.22652, to:"중앙대생활관·기숙사 방면 (캠퍼스로 들어가는 쪽)"} ] },
+  { key:"dorm", name:"중앙대생활관.기숙사", short:"생활관·기숙사", lat:37.00707, lng:127.2284, where:"캠퍼스 안",
+    dirs:[ {no:"34164", lat:37.00705, lng:127.22828, to:"801관 방면 (캠퍼스 안쪽으로)"},
+           {no:"34165", lat:37.00709, lng:127.2285,  to:"롯데캐슬 방면 (캠퍼스 밖으로)"} ] },
+  { key:"b801", name:"801관중앙문화관앞", short:"801관", lat:37.00456, lng:127.22936, where:"캠퍼스 안",
+    dirs:[ {no:"34168", lat:37.00446, lng:127.22935, to:"810관원형관 방면 (안쪽으로)"},
+           {no:"34167", lat:37.00465, lng:127.22937, to:"생활관·기숙사 방면 (밖으로)"} ] },
+  { key:"b810", name:"810관원형관앞", short:"810관", lat:37.00214, lng:127.22865, where:"캠퍼스 안 · 1번 버스 회차",
+    dirs:[ {no:"34166", lat:37.00214, lng:127.22865, to:"801관 방면 (1번 버스가 돌아 나가는 쪽)"} ] },
+  { key:"hanaro", name:"내리하나로마트", short:"내리하나로마트", lat:37.0007, lng:127.2247, where:"중앙대학로 · 대덕농협 하나로마트 앞",
+    dirs:[ {no:"33516", lat:37.0007, lng:127.2247, to:"돈도마을입구 방면"} ] },
+  { key:"naeri1", name:"중앙대학로.내리1길", short:"내리1길", lat:37.00267, lng:127.22205, where:"중앙대학로",
+    dirs:[ {no:"34567", lat:37.00287, lng:127.22194, to:"광덕초등학교 방면"},
+           {no:"33824", lat:37.00247, lng:127.22216, to:"내리삼거리 방면"} ] }
+];
+let curPlace = store.get("dvb-place","lotte"); if(!PLACES.some(p=>p.key===curPlace)) curPlace="lotte";
+const placeOf = k => PLACES.find(p=>p.key===k);
+DGC.disc = DGC.disc || {};
+async function discoverDirs(pl){
+  const c = DGC.disc[pl.key];
+  if(c && Date.now()-c.at < 86400000*3) { mergeDirs(pl, c.list); return; }
+  try{
+    const items = asList((await dg("gbis_station_around",{x:pl.lng,y:pl.lat})).busStationAroundList);
+    const list = items.filter(it=>nname(it.stationName)===nname(pl.name)).map(it=>({no:String(it.mobileNo||"").replace(/\D/g,""), lat:+it.y, lng:+it.x, sid:String(it.stationId)}));
+    list.forEach(x=>{ if(x.no && x.sid) DGC.gbis[x.no]=x.sid; });
+    DGC.disc[pl.key]={at:Date.now(), list}; saveDGC(); mergeDirs(pl, list);
+  }catch(e){}
 }
-const stationCache = store.get("dvb-stations", {});
-async function gbisSid(place) {
-  if (stationCache[place.name]) return stationCache[place.name];
-  let list = [];
-  for (const kw of [place.name, place.name.split(".")[0]]) {
-    list = (await dg("busstationservice/v2/getBusStationListv2", { keyword: kw })).filter(s => (s.stationName || "").replace(/\s/g, "") === place.name);
-    if (list.length) break;
-  }
-  const out = list.map(s => ({ id: s.stationId, no: s.mobileNo, name: s.stationName }));
-  if (out.length) { stationCache[place.name] = out; store.set("dvb-stations", stationCache); }
-  return out;
-}
-
-/* ===== 8. 정류장별 보드 (PLACES, renderCityBoard()) ===== */
-const lastFetch = {};
-const crowd = { 1: "여유", 2: "보통", 3: "혼잡", 4: "매우 혼잡" };
-function renderCityBoard() {
-  $("#cityBanner").textContent = KEYS.DATA_GO_KR
-    ? "정류장을 눌러 펼치면 곧 도착 정보를 불러와요."
-    : "곧 도착 정보는 'API 키 설정'에 공공데이터포털 인증키를 넣으면 볼 수 있어요. 지도·길찾기는 키 없이도 돼요.";
-  $("#places").innerHTML = PLACES.map((p, i) => `<details class="place" data-i="${i}"><summary><div><div class="pn">${esc(p.name)}</div>
-    <div class="ps">${p.no ? "정류장 번호 " + p.no : "정류장 번호는 불러온 뒤 표시해요"}</div></div><span class="ps">▾</span></summary>
-    <div class="pbody"><div class="msg">펼치면 불러와요.</div></div></details>`).join("");
-  document.querySelectorAll("details.place").forEach(d => d.addEventListener("toggle", () => { if (d.open) loadPlace(d, false); }));
-}
-async function loadPlace(d, force) {
-  const p = PLACES[+d.dataset.i], body = $(".pbody", d);
-  if (!KEYS.DATA_GO_KR) { body.innerHTML = `<div class="msg">인증키가 없어서 곧 도착 정보를 못 보여줘요. 'API 키 설정'에 키를 입력해요.</div>`; return; }
-  if (force && Date.now() - (lastFetch[p.name] || 0) < 10000) return; // 수동 새로고침 10초 간격
-  lastFetch[p.name] = Date.now();
-  body.innerHTML = `<div class="msg">불러오는 중이에요…</div>`;
-  try {
-    const sts = await gbisSid(p);
-    if (!sts.length) { body.innerHTML = `<div class="msg err">정류장 ID를 찾지 못했어요. 정류장 이름이 다르게 등록됐을 수 있어요.</div>`; return; }
-    let html = "";
-    for (let k = 0; k < sts.length; k++) {
-      const arr = await dg("busarrivalservice/v2/getBusArrivalListv2", { stationId: sts[k].id });
-      html += `<div class="dir">${sts.length > 1 ? "방향 " + "①②③④"[k] + " · " : ""}${esc(sts[k].name)}${sts[k].no ? " (" + esc(sts[k].no) + ")" : ""}</div>`;
-      html += arr.length ? arr.map(a => {
-        const s1 = a.predictTimeSec1 !== undefined && a.predictTimeSec1 !== "" ? +a.predictTimeSec1 : null;
-        const eta = s1 === null ? "정보 없음" : s1 <= 60 ? "곧 도착" : Math.ceil(s1 / 60) + "분 후";
-        return `<div class="arr"><div class="l"><b>${esc(a.routeName)}</b><small>${a.routeDestName ? esc(a.routeDestName) + " 방면" : ""}</small></div>
-          <div class="r"><b>${eta}</b><small>${a.locationNo1 ? a.locationNo1 + "정류장 전" : ""}${crowd[a.crowded1] ? " · " + crowd[a.crowded1] : ""}</small></div></div>`;
-      }).join("") : `<div class="msg">도착 예정 버스가 없어요.</div>`;
-    }
-    const n = seoulNow();
-    body.innerHTML = html + `<div class="btns"><button class="pill" data-refresh="${d.dataset.i}">새로고침</button><span class="ps" style="align-self:center">${pad(n.hh)}:${pad(n.mm)} 기준</span></div>`;
-  } catch (e) {
-    const m = String(e.message);
-    body.innerHTML = `<div class="msg err">${m === "BADFORMAT" ? "응답을 읽지 못했어요. 인증키가 맞는지, 'GBIS 버스도착정보 v2' 활용 신청이 승인됐는지 확인해요."
-      : m.startsWith("API:") ? "공공데이터 서버가 오류를 돌려줬어요: " + esc(m.slice(4)) : "네트워크 오류예요. 연결을 확인하고 새로고침해요."}</div>`;
-  }
-}
-function refreshOpenPlaces() {
-  if (!KEYS.DATA_GO_KR || document.visibilityState !== "visible") return;
-  document.querySelectorAll("details.place[open]").forEach(d => loadPlace(d, false));
-}
-setInterval(() => { if (ui.screen === "city") refreshOpenPlaces(); }, 60000);
-
-/* ===== 9. 지도 (카카오 / Leaflet 공통 함수 mLabel, mLine, mFit) ===== */
-let MAPI = null, mapLoading = null;
-const loadScript = src => new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("LOAD")); document.head.appendChild(s); });
-let kakaoP = null;
-function loadKakao() {
-  if (kakaoP) return kakaoP;
-  kakaoP = loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KEYS.KAKAO_JS)}&libraries=services&autoload=false`)
-    .then(() => new Promise(res => kakao.maps.load(res)))
-    .catch(e => { kakaoP = null; throw e; });
-  return kakaoP;
-}
-function loadLeaflet() {
-  if (window.L) return Promise.resolve();
-  const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(l);
-  return loadScript("https://unpkg.com/leaflet@1.9.4/dist/leaflet.js");
-}
-function kakaoMap(el) {
-  const map = new kakao.maps.Map(el, { center: new kakao.maps.LatLng(CAMPUS.lat, CAMPUS.lng), level: 5 }), objs = [];
-  const ll = p => new kakao.maps.LatLng(p[0], p[1]);
-  return { kind: "kakao",
-    clear() { objs.forEach(o => o.setMap(null)); objs.length = 0; },
-    label(lat, lng, text) { const o = new kakao.maps.CustomOverlay({ position: ll([lat, lng]), content: `<div class="mk">${esc(text)}</div>`, yAnchor: 0 }); o.setMap(map); objs.push(o); },
-    line(pts, color) { const l = new kakao.maps.Polyline({ path: pts.map(ll), strokeWeight: 5, strokeColor: color, strokeOpacity: .9 }); l.setMap(map); objs.push(l); },
-    fit(pts) { if (pts.length === 1) { map.setCenter(ll(pts[0])); return; } const b = new kakao.maps.LatLngBounds(); pts.forEach(p => b.extend(ll(p))); map.setBounds(b, 40, 40, 40, 40); },
-    relayout() { map.relayout(); } };
-}
-function leafletMap(el) {
-  const map = L.map(el).setView([CAMPUS.lat, CAMPUS.lng], 14), layer = L.layerGroup().addTo(map);
-  const dark = !matchMedia("(prefers-color-scheme: light)").matches;
-  L.tileLayer(`https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "light_all"}/{z}/{x}/{y}{r}.png`,
-    { maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap contributors © CARTO" }).addTo(map);
-  return { kind: "osm",
-    clear() { layer.clearLayers(); },
-    label(lat, lng, text) { L.marker([lat, lng], { icon: L.divIcon({ className: "mkw", html: `<div class="mk">${esc(text)}</div>`, iconSize: [0, 0] }) }).addTo(layer); },
-    line(pts, color) { L.polyline(pts, { color, weight: 5, opacity: .9 }).addTo(layer); },
-    fit(pts) { pts.length === 1 ? map.setView(pts[0], 16) : map.fitBounds(pts, { padding: [30, 30] }); },
-    relayout() { map.invalidateSize(); } };
-}
-function mapInit() {
-  if (MAPI) { MAPI.relayout(); return Promise.resolve(MAPI); }
-  if (mapLoading) return mapLoading;
-  mapLoading = (async () => {
-    if (KEYS.KAKAO_JS) {
-      try { await loadKakao(); MAPI = kakaoMap($("#map")); }
-      catch (e) { $("#mapNote").textContent = "카카오맵을 못 불러왔어요. 키가 맞는지 확인하고, OpenStreetMap으로 대신 보여줘요."; }
-    }
-    if (!MAPI) { await loadLeaflet(); MAPI = leafletMap($("#map")); }
-    renderProvider();
-    return MAPI;
-  })().catch(e => { mapLoading = null; $("#mapNote").textContent = "지도를 불러오지 못했어요. 인터넷 연결을 확인하고 다시 열어 보세요."; throw e; });
-  return mapLoading;
-}
-const mClear = () => MAPI && MAPI.clear();
-const mLabel = (lat, lng, t) => MAPI && MAPI.label(lat, lng, t);
-const mLine = (pts, c) => MAPI && MAPI.line(pts, c);
-const mFit = pts => MAPI && pts.length && MAPI.fit(pts);
-function renderProvider() { $("#provider").textContent = MAPI ? (MAPI.kind === "kakao" ? "카카오맵" : "OpenStreetMap") : (KEYS.KAKAO_JS ? "카카오맵" : "OpenStreetMap"); }
-
-/* ===== 10. 장소 검색 · 길찾기 ===== */
-const QUICK = ["음식점", "카페", "편의점", "약국", "안성터미널", "평택역"];
-let lastResults = [], nav = { geo: null, campus: null, to: null, res: null, mode: "foot" };
-
-function kakaoSearch(q) {
-  return new Promise((res, rej) => {
-    const S = kakao.maps.services;
-    new S.Places().keywordSearch(q, (data, status) => {
-      if (status === S.Status.OK) res(data.map(d => ({ name: d.place_name, addr: d.road_address_name || d.address_name, lat: +d.y, lng: +d.x, cat: d.category_group_name || "" })));
-      else if (status === S.Status.ZERO_RESULT) res([]); else rej(new Error("KAKAO"));
-    }, { location: new kakao.maps.LatLng(CAMPUS.lat, CAMPUS.lng), radius: 20000, sort: S.SortBy.DISTANCE, size: 8 });
+function mergeDirs(pl, list){
+  list.forEach(x=>{
+    if(!x.no) return;
+    const d = pl.dirs.find(d=>d.no===x.no);
+    if(d){ d.lat=x.lat; d.lng=x.lng; d.approx=false; }
+    else if(!pl.only) pl.dirs.push({no:x.no, lat:x.lat, lng:x.lng, to:"반대 방향"});
   });
 }
-async function photonSearch(q) {
-  const r = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=8&lat=${CAMPUS.lat}&lon=${CAMPUS.lng}`);
-  const j = await r.json();
-  return (j.features || []).map(f => { const p = f.properties || {};
-    return { name: p.name || p.street || "이름 없는 장소", addr: [p.state, p.city || p.county, p.street, p.housenumber].filter(Boolean).join(" "),
-      lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0], cat: p.osm_value || "" }; });
+async function fetchDir(pl, d, maxAge=50000){
+  const c=RT.data[d.no]; if(c && Date.now()-c.at < maxAge) return c;
+  const r=await arrivalsFor([pl.name, d.lat, d.lng, d.no]);
+  RT.data[d.no]={at:Date.now(), items:r.items}; RT.source=r.source;
+  trackArrivals(d.no, r.items);
+  return RT.data[d.no];
 }
-async function searchPlaces(q) {
-  if (KEYS.KAKAO_JS) {
-    try { await loadKakao(); return await kakaoSearch(q); }
-    catch (e) { $("#mapNote").textContent = "카카오 검색을 못 써서 Photon으로 찾았어요. 카카오 콘솔에 이 사이트 주소(" + location.origin + ")를 등록했는지 확인해요."; }
-  }
-  return photonSearch(q);
+let rtBusy=false;
+async function refreshRealtime(force, manual){
+  if(!KEYS.DATA_GO_KR){ RT.state="nokey"; renderCityBoard(); return; }
+  if(rtBusy || (document.hidden && !manual)) return; if(!force && Date.now()-RT.at < (REFRESH_SEC-2)*1000 && RT.state!=="unknown") return;
+  rtBusy=true;
+  const pl=placeOf(curPlace);
+  try{
+    await discoverDirs(pl);
+    const res=await Promise.allSettled(pl.dirs.map(d=>fetchDir(pl,d)));
+    const bad=res.find(x=>x.status==="rejected");
+    RT.msg = bad ? bad.reason.message : ""; RT.at=Date.now();
+    RT.state = res.every(x=>x.status==="rejected") ? "err" : "on";
+  } finally { rtBusy=false; renderCityBoard(); renderDiag(); drawPlaces(); }
+}
+let lastManual=0;
+async function manualRefresh(btn){
+  if(btn.disabled) return;
+  const wait = 10000-(Date.now()-lastManual);       // 호출 한도 보호: 10초에 한 번
+  if(wait>0){ btn.querySelector("span").textContent=`${Math.ceil(wait/1000)}초 후 가능`; setTimeout(()=>btn.querySelector("span").textContent="새로고침",1500); return; }
+  lastManual=Date.now(); btn.disabled=true; btn.classList.add("spin"); btn.querySelector("span").textContent="불러오는 중";
+  placeOf(curPlace).dirs.forEach(d=>{ delete RT.data[d.no]; });
+  try{ if(RT.state==="err") RT.state="unknown"; while(rtBusy) await new Promise(r=>setTimeout(r,200)); await refreshRealtime(true, true); }
+  finally{ btn.disabled=false; btn.classList.remove("spin"); btn.querySelector("span").textContent="새로고침"; }
+}
+function selectPlace(k){
+  curPlace=k; store.set("dvb-place",k); RT.at=0;
+  renderPlaceChips(); renderCityBoard(); drawPlaces(true); refreshRealtime(true);
+}
+function renderPlaceChips(){
+  $("place-chips").innerHTML = PLACES.map(p=>`<button class="chip" type="button" id="pl-${p.key}" data-place="${p.key}" aria-pressed="${p.key===curPlace}">${esc(p.short)}${p.dirs.length>1?' <small>양방향</small>':""}</button>`).join("");
+}
+function crowdBadge(c, seat, route){
+  if(c>=1){ const t=["","여유","보통","혼잡","매우혼잡"][c]||""; const k=c===1?"ok":c===2?"mid":"bad"; return `<span class="crowd ${k}">${t}</span>`; }
+  if(seat>=0 && (!route || METRO.has(String(route).split("·")[0]))){ const k=seat>=20?"ok":seat>=8?"mid":"bad"; const t=k==="ok"?"여유":k==="mid"?"보통":"혼잡"; return `<span class="crowd ${k}">${t} · ${seat}석</span>`; }
+  return "";
+}
+function lineKind(no){ const id = Object.keys(LINE_DATA.L).find(k=>LINE_DATA.L[k].no===no); return id && META[id] ? META[id].kind : (METRO.has(no)?"dir":"gen"); }
+function lineTo(no){ const id = Object.keys(LINE_DATA.L).find(k=>LINE_DATA.L[k].no===no); return id && META[id] ? META[id].to : ""; }
+const kakaoIdsByNo = no => Object.keys(LINE_DATA.S).filter(id=>LINE_DATA.S[id][3]===no);
+function dirHead(pl, d, i){
+  return `<div class="stop-head"><div class="sh-main"><b>${esc(pl.name)}</b><span class="sh-no">정류장 번호 ${d.no}</span>${pl.dirs.length>1?`<span class="sh-dir">${i===0?"방향 ①":"방향 ②"}</span>`:""}</div>
+    <div class="sh-sub"><b>${esc(d.to)}</b> · ${esc(pl.where)}${d.approx?" · 위치 대략":""}</div>
+    <div class="sh-act"><button type="button" class="sh-btn" data-focusno="${d.no}">지도에서 보기</button>${kakaoIdsByNo(d.no)[0]?`<a href="${stopLink(kakaoIdsByNo(d.no)[0])}" target="_blank" rel="noopener">카카오맵 ↗</a>`:`<a href="${searchLink(pl.name+" 정류장")}" target="_blank" rel="noopener">카카오맵 ↗</a>`}</div></div>`;
+}
+function rowsLive(d){
+  const c=RT.data[d.no]; if(!c) return `<div class="board-empty">불러오는 중…</div>`;
+  const age=Math.floor((Date.now()-c.at)/60000);
+  const rows=c.items.filter(it=>it.route && !/통학/.test(it.route) && it.min1!=null)
+    .map(it=>({it, m1:Math.max(0,it.min1-age), m2:it.min2!=null?Math.max(0,it.min2-age):null})).sort((a,b)=>a.m1-b.m1);
+  if(!rows.length) return `<div class="board-empty">지금 이 방향으로 다가오는 버스가 없어요.</div>`;
+  return rows.map(({it,m1,m2})=>`<div class="row"><span class="ln ${lineKind(it.route)}">${esc(it.route)}</span>
+    <div class="what"><b>${esc(it.dest ? it.dest.replace(/\(.*?\)/g,"")+" 행" : (lineTo(it.route)||""))}</b><span>${it.left1!=null?`${it.left1}정류장 전`:""}</span></div>
+    <div class="when"><div class="big">${m1<1?'<span class="txt">곧 도착</span>':m1+"분"}</div>
+    <div class="small">${m1>=1&&m1<=3?'<span class="soon">곧 도착</span> ':""}${m2!=null?`다음 ${m2}분 `:""}${crowdBadge(it.crowd1,it.seat1,it.route)}</div></div></div>`).join("");
+}
+function rowsPlan(d){
+  const ids=kakaoIdsByNo(d.no); const lines=new Set();
+  ids.forEach(id=>Object.keys(LINE_DATA.L).forEach(l=>{ if(LINE_DATA.L[l].stops.includes(id)) lines.add(l); }));
+  const n=seoulNow();
+  const list=[...lines].filter(l=>META[l]).sort((a,b)=>ivAvg(META[a].iv)-ivAvg(META[b].iv));
+  if(!list.length) return `<div class="board-empty">실시간이 연결되면 이 정류장의 버스가 나와요.</div>`;
+  return list.map(l=>{ const m=META[l], on=inService(l,n.min);
+    return `<div class="row${on?"":" off"}"><span class="ln ${m.kind}">${LINE_DATA.L[l].no}</span><div class="what"><b>${esc(m.to)}</b><span>시간표 기준</span></div><div class="when"><div class="big">${on?`<span class="txt">${esc(m.iv||"-")} 간격</span>`:"운행 끝"}</div></div></div>`; }).join("");
+}
+function renderCityBoard(){
+  const st=$("rt-state"), help=$("rt-help"), pl=placeOf(curPlace);
+  const live = RT.state==="on";
+  const t=RT.at?new Date(RT.at):null;
+  st.innerHTML = live ? `<i class="dot on"></i>실시간${RT.source?" · "+RT.source:""} · ${t?pad(t.getHours())+":"+pad(t.getMinutes())+" 갱신":""}`
+    : `<i class="dot"></i>${RT.state==="unknown"?"실시간 확인 중":RT.state==="err"?"실시간 연결 안 됨 · 시간표 기준":"시간표 기준"}`;
+  $("city-rows").innerHTML = pl.dirs.map((d,i)=>`<div class="stop-grp">${dirHead(pl,d,i)}${live||RT.data[d.no]?rowsLive(d):rowsPlan(d)}</div>`).join("");
+  help.hidden = RT.state==="on" ? !RT.msg : RT.state==="unknown";
+  help.innerHTML = RT.state==="nokey" ? `실시간을 보려면 위쪽 <b>API 키 설정</b>에서 공공데이터포털 인증키를 입력하세요. 키가 없으면 시간표 기준으로 보여드려요.`
+    : RT.state==="err" ? `실시간을 받지 못해 시간표 기준으로 보여드려요. 아래 ‘실시간 연결 상태’를 확인하세요.` : RT.msg ? "일부 방향 정보를 못 불러왔어요: "+esc(RT.msg) : "";
+}
+function renderDiag(){
+  if(!KEYS.DATA_GO_KR) return;
+  $("diag").hidden=false;
+  $("diag-body").innerHTML = `<ul>${Object.keys(DG_API).map(k=>{ const v=DG_STATUS[k];
+    return `<li><span class="st ${v.state}">${v.state==="ok"?"사용 가능":v.state==="fail"?"안 됨":"아직 안 씀"}</span><span>${esc(DG_NAME[k])}${v.msg?" — "+esc(v.msg):""} <span class="meta">(오늘 ${usedCalls(k)}회)</span></span></li>`; }).join("")}</ul>
+    ${LOOKUP_LOG.length?`<p class="meta" style="margin-top:6px"><b>정류장 찾기</b><br>${LOOKUP_LOG.map(esc).join("<br>")}</p>`:""}
+    ${RT.msg?`<p class="meta"><b>마지막 오류</b> ${esc(RT.msg)}</p>`:""}
+    <p class="meta" style="margin-top:6px">지도: ${MAP.kind==="kakao"?"카카오맵":MAP.kind==="leaflet"?"OpenStreetMap(카카오맵을 못 불러와 대신 표시)":"불러오는 중"} · 장소 검색: ${searchMode()}</p>`;
+}
+function dirByNo(no){ for(const p of PLACES){ const d=p.dirs.find(d=>d.no===no); if(d) return [p,d]; } return [null,null]; }
+function focusNo(no){
+  const [pl,d]=dirByNo(no); if(!d || !MAP.m) return;
+  if(MAP.kind==="kakao"){ MAP.m.setLevel(2); MAP.m.setCenter(new kakao.maps.LatLng(d.lat,d.lng)); } else MAP.m.setView([d.lat,d.lng],18);
+  if(window._focusMark) window._focusMark.remove();
+  window._focusMark=mLabel(d,tagHtml(esc(pl.name)+" · "+d.no,"#1B4FA8"),8);
+  $("map").scrollIntoView({behavior:"smooth",block:"center"});
+}
+let placeMarks=[];
+function drawPlaces(focus){
+  if(!MAP.m) return;
+  placeMarks.forEach(m=>m.remove()); placeMarks=[];
+  PLACES.forEach(p=>{
+    if(p.key===curPlace) p.dirs.forEach((d,i)=>placeMarks.push(mLabel(d,`<div class="mstopl on"><i></i>${esc(p.short)} ${d.no}${p.dirs.length>1?(i===0?" ①":" ②"):""}</div>`,4)));
+    else placeMarks.push(mLabel(p,`<div class="mstopl"><i></i>${esc(p.short)}</div>`,1));
+  });
+  if(focus){ const p=placeOf(curPlace); if(MAP.kind==="kakao"){ MAP.m.setLevel(3); MAP.m.setCenter(new kakao.maps.LatLng(p.lat,p.lng)); } else MAP.m.setView([p.lat,p.lng],17); }
 }
 
-async function doSearch(q) {
-  q = (q || "").trim();
-  const box = $("#results");
-  if (!q) { box.innerHTML = `<div class="msg err">검색어를 입력해요.</div>`; return; }
-  $("#btnSearch").disabled = true; box.innerHTML = `<div class="msg">찾는 중이에요…</div>`; $("#mapNote").textContent = "";
-  try {
-    await mapInit().catch(() => {});
-    lastResults = await searchPlaces(q);
-    box.innerHTML = lastResults.length ? `<div class="res">${lastResults.map((r, i) => `<div class="li"><div class="m"><div class="t">${esc(r.name)}</div>
-      <div class="s">${esc([r.cat, r.addr].filter(Boolean).join(" · "))}</div></div>
-      <div class="r"><button class="pill" data-pick="${i}">도착지로</button></div></div>`).join("")}</div>`
-      : `<div class="msg">검색 결과가 없어요. 다른 검색어로 다시 찾아보세요.</div>`;
-    if (lastResults.length && MAPI) { mClear(); lastResults.forEach(r => mLabel(r.lat, r.lng, r.name)); mFit(lastResults.map(r => [r.lat, r.lng])); }
-  } catch (e) { box.innerHTML = `<div class="msg err">검색에 실패했어요. 인터넷 연결을 확인하고 다시 눌러 보세요.</div>`; }
-  $("#btnSearch").disabled = false;
+/* 배차 간격 기록 (이 브라우저에 저장) */
+const LOG_STOPS = { "34151":"롯데캐슬 · 서울·평택 방면", "34157":"롯데캐슬 · 안성시내 방면" };
+const TRACK = {};
+function trackArrivals(no, items){
+  if(!LOG_STOPS[no]) return;
+  const now=Date.now(), seen=new Set();
+  items.forEach(it=>{ const r=it.route; if(!r || /통학/.test(r)) return; seen.add(r);
+    const k=no+"|"+r, prev=TRACK[k], cur={min:it.min1, plate:it.plate1||"", t:now};
+    if(prev && prev.min!=null && prev.min<=3 && now-prev.t<900000){
+      const passed=(prev.plate&&cur.plate&&prev.plate!==cur.plate) || cur.min==null || cur.min-prev.min>=3;
+      if(passed) logEvent(no, r, prev.t+Math.max(0,prev.min)*60000);
+    }
+    TRACK[k]=cur; });
+  Object.keys(TRACK).filter(k=>k.startsWith(no+"|") && !seen.has(k.split("|")[1])).forEach(k=>{ const p=TRACK[k]; delete TRACK[k];
+    if(p.min!=null && p.min<=3 && now-p.t<900000) logEvent(no, k.split("|")[1], p.t+Math.max(0,p.min)*60000); });
+}
+function logEvent(no, route, ts){
+  const log=jget("dvb-log",[]); log.push([ts,no,route]);
+  const cut=Date.now()-28*86400000; jset("dvb-log", log.filter(x=>x[0]>=cut));
+}
+function logLoop(){ // 길찾기 화면이 아니어도, 페이지가 열려 있으면 3분마다 기록 정류장 확인
+  if(!KEYS.DATA_GO_KR || document.hidden) return;
+  const h=seoulNow().h; if(h<5) return;
+  const pl=placeOf("lotte"); pl.dirs.filter(d=>LOG_STOPS[d.no]).forEach(d=>{ if(usedCalls("gbis_arrival")>KEYS.DAILY_LIMIT*0.85) return; fetchDir(pl,d,170000).catch(()=>{}); });
 }
 
-async function osrm(profile, a, b) {
-  const url = `https://routing.openstreetmap.de/routed-${profile}/route/v1/${profile === "car" ? "driving" : "foot"}/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`;
-  const j = await (await fetch(url)).json();
-  if (j.code !== "Ok" || !j.routes || !j.routes[0]) throw new Error("NOROUTE");
-  return j.routes[0];
+/* ======================= 노선 정보 ======================= */
+function renderLineList(){
+  const groups = [["서울·수도권 직행·시외", id=>META[id].kind!=="gen"], ["시내버스", id=>META[id].kind==="gen" && !META[id].rare], ["하루 몇 번만 다니는 노선", id=>META[id].rare]];
+  $("line-list").innerHTML = groups.map(([t,f])=>`<h3 style="font-size:14px;margin:14px 0 2px">${t}</h3>` + Object.keys(META).filter(f).map(id=>{
+    const m=META[id], bits=[m.f1?`기점 ${m.f1}~${m.l1}`:"", m.f2?`회차지 ${m.f2}~${m.l2}`:"", m.iv?`배차 ${m.iv}${m.ivw?` (주말 ${m.ivw})`:""}`:""].filter(Boolean).join(" · ");
+    return `<div class="crow"><span class="ln ${m.kind}">${LINE_DATA.L[id].no}</span><div><b>${m.to}</b><span class="mono">${bits}</span></div><a href="${lineLink(id)}" target="_blank" rel="noopener">실시간 위치 ↗</a></div>`;
+  }).join("")).join("") + `<p class="meta" style="margin-top:10px">첫차·막차는 기점과 회차지 출발 시각이에요. 서울에서 오는 직행은 캠퍼스 쪽 롯데캐슬 정류장에 내려요.</p>`;
 }
-const walkMin = m => Math.max(1, Math.round(m / 75));            // 도보 75m/분 추정
-const taxiFare = m => 4800 + Math.max(0, Math.ceil((m - 1600) / 131)) * 100; // 기본 4,800원 + 131m당 100원 추정
-const fmtDist = m => m >= 1000 ? (m / 1000).toFixed(1) + "km" : Math.round(m) + "m";
-const fmtMin = m => m >= 60 ? `${Math.floor(m / 60)}시간 ${m % 60}분` : `${m}분`;
 
-async function resolveFrom() {
-  if (nav.geo) return nav.geo;
-  const q = $("#fromQ").value.trim();
-  if (!q || q === CAMPUS.name) {
-    if (nav.campus) return nav.campus;
-    try { const r = await searchPlaces(CAMPUS.name); if (r[0]) return (nav.campus = r[0]); } catch (e) {}
-    return (nav.campus = { ...CAMPUS, approx: true });
+/* ======================= 길찾기 ======================= */
+function ivAvg(s){ if(!s) return 60; const m=s.match(/(\d+)(?:~(\d+))?분/); if(!m) return 240; return m[2] ? (+m[1]+ +m[2])/2 : +m[1]; }
+function inService(id, nowMin){
+  const m=META[id]; if(!m || !m.f1) return true;
+  const firsts=[m.f1,m.f2].filter(Boolean).map(toMin), lasts=[m.l1,m.l2].filter(Boolean).map(toMin);
+  return nowMin >= Math.min(...firsts)-10 && nowMin <= Math.max(...lasts)+20;
+}
+function segMin(a,b){ const d=km(a,b)*1.25; return d/(d>3?70:22)*60 + 0.4; }
+const P = id => { const s=LINE_DATA.S[id]; return s ? {lat:s[1],lng:s[2]} : null; };
+function rtFor(stopId, no){ const s=LINE_DATA.S[stopId]; const d=s&&RT.data[s[3]]; if(!d) return null; const it=d.items.find(x=>x.route===no); if(!it) return null;
+  const age=(Date.now()-d.at)/60000; return { m1: it.min1!=null?Math.max(0,it.min1-age):null, m2: it.min2!=null?Math.max(0,it.min2-age):null, left1:it.left1, crowd:it.crowd1, seat:it.seat1 }; }
+
+/* 대중교통 추정: 캠퍼스 근처 정류장에서 환승 없이 가는 노선 (정류장 좌표 기반) */
+function estimateRoutes(origin, dest){
+  const n = seoulNow(), S = LINE_DATA.S, L = LINE_DATA.L;
+  const near = new Set(Object.keys(S).filter(id=>S[id][3] && km(origin,P(id))<=1.6));
+  const opts=[];
+  for(const lid of Object.keys(L)){
+    const no=L[lid].no, stops=L[lid].stops; if(!inService(lid,n.min)) continue;
+    stops.forEach((sid,i)=>{
+      if(!near.has(sid)) return;
+      const w1=walkMin(km(origin,P(sid))); let ride=0, prev=P(sid), bj=null;
+      for(let j=i+1;j<stops.length&&j<i+160;j++){ const pj=P(stops[j]); if(!pj) continue; ride+=segMin(prev,pj); prev=pj;
+        if(!S[stops[j]][3]) continue; if(stops[j]===sid) break;
+        const w2=walkMin(km(pj,dest)); if(!bj||ride+w2<bj.cost) bj={j,sid2:stops[j],ride:Math.round(ride),w2,cost:ride+w2}; }
+      if(!bj||bj.w2>30) return;
+      const rt=rtFor(sid,no); let wait, live=false, rtInfo=null;
+      if(rt && rt.m1!=null && rt.m1>=w1){ wait=rt.m1; live=true; rtInfo=rt; }
+      else wait = w1 + Math.min(ivAvg(META[lid]&&META[lid].iv)/2, 90);
+      opts.push({lid,no,sid,i,j:bj.j,sid2:bj.sid2,w1,wait:Math.round(Math.max(0,wait-w1)),ride:bj.ride,w2:bj.w2,total:Math.round(Math.max(w1,wait)+bj.ride+bj.w2),live,rtInfo});
+    });
   }
-  const r = await searchPlaces(q);
-  if (!r.length) throw new Error("NOFROM");
-  return r[0];
+  opts.sort((a,b)=>a.total-b.total);
+  const seen=new Set(), out=[]; for(const o of opts){ if(seen.has(o.no)) continue; seen.add(o.no); out.push(o); if(out.length===3) break; }
+  return out.map(o=>{
+    const kind=(META[o.lid]||{}).kind||"gen", S2=LINE_DATA.S;
+    const stops=LINE_DATA.L[o.lid].stops.slice(o.i,o.j+1).map(P).filter(Boolean);
+    return { est:true, total:o.total, fare:null, walk:o.w1+o.w2, transfers:0,
+      legs:[ {t:"walk", min:o.w1, from:origin, to:P(o.sid)},
+             {t:"bus", kind, no:o.no, min:o.ride, wait:o.wait, live:o.live, rt:o.rtInfo, from:{...P(o.sid),name:S2[o.sid][0]}, to:{...P(o.sid2),name:S2[o.sid2][0]}, path:stops, stopId:o.sid},
+             {t:"walk", min:o.w2, from:P(o.sid2), to:dest} ] };
+  });
 }
-async function computeRoute(to) {
-  nav.to = to; const box = $("#routeBox");
-  box.innerHTML = `<div class="msg">경로를 찾는 중이에요…</div>`;
-  try {
-    await mapInit().catch(() => {});
-    const from = await resolveFrom();
-    const [foot, car] = await Promise.allSettled([osrm("foot", from, to), osrm("car", from, to)]);
-    if (foot.status !== "fulfilled" && car.status !== "fulfilled") throw new Error("NOROUTE");
-    nav.res = { from, to, foot: foot.value, car: car.value };
-    nav.mode = foot.value ? "foot" : "car";
-    renderRoute();
-  } catch (e) {
-    box.innerHTML = `<div class="msg err">${e.message === "NOFROM" ? "출발지를 찾지 못했어요. 출발지 이름을 바꿔서 다시 시도해요." : e.message === "NOROUTE" ? "이 두 장소 사이의 도로 경로를 찾지 못했어요. 다른 도착지를 골라 보세요." : "경로 서버에 연결하지 못했어요. 잠시 뒤 다시 눌러 보세요."}</div>`;
+
+/* 도보·택시 경로 (OpenStreetMap 경로 서버) */
+async function osrm(profile, a, b){
+  const r = await fetch(`https://routing.openstreetmap.de/routed-${profile}/route/v1/driving/${a.lng.toFixed(6)},${a.lat.toFixed(6)};${b.lng.toFixed(6)},${b.lat.toFixed(6)}?overview=full&geometries=geojson`);
+  const j = await r.json(); if(!r.ok || !j.routes || !j.routes.length) throw new Error(j.message||"경로 없음");
+  const rt=j.routes[0]; return { m:rt.distance, s:rt.duration, pts:rt.geometry.coordinates.map(c=>({lat:c[1],lng:c[0]})) };
+}
+function taxiFare(m, outside, hour){
+  let f = 4800; if(m>1600) f += Math.ceil((m-1600)/131)*100;
+  f *= 1.05;                                   // 신호대기 등 시간요금 보정
+  if(hour>=22 || hour<4) f *= 1.2;             // 심야 할증(추정)
+  if(outside) f *= 1.2;                        // 시계외 할증
+  return Math.round(f/100)*100;
+}
+const won = n => n==null ? "" : n.toLocaleString("ko-KR")+"원";
+const fmtDur = m => m>=60 ? `${Math.floor(m/60)}시간 ${Math.round(m%60)}분` : `${Math.round(m)}분`;
+const fmtKm = m => m>=1000 ? (m/1000).toFixed(1)+"km" : Math.round(m)+"m";
+
+/* 지도: 웹 주소(http/https)로 열면 카카오맵, 파일로 열면 OpenStreetMap 기반 지도 */
+const ON_CLAUDE = /claude\.ai|claudeusercontent/.test(location.hostname);
+const WEB_ORIGIN = /^https?:$/.test(location.protocol);   // 파일로 열면 false
+function kakaoTilesOk(el){ return new Promise(res=>{ let n=0; const iv=setInterval(()=>{ n++;
+  const ok=[...el.querySelectorAll("img")].some(i=>/kakaocdn/.test(i.src) && i.complete && i.naturalWidth>0);
+  if(ok||n>=16){ clearInterval(iv); res(ok); } },250); }); }
+function searchMode(){ return MAP.kind==="kakao"&&WEB_ORIGIN ? "카카오맵 장소 검색" : "정류장 이름 + OpenStreetMap 장소 검색(Photon)"; }
+const MAP = { kind:null, m:null, items:[], clickFn:null };
+function loadScript(src, ms=8000){ return new Promise(res=>{ const s=document.createElement("script"); s.src=src; let d=false; const f=v=>{ if(!d){ d=true; res(v); } };
+  s.onload=()=>f(true); s.onerror=()=>f(false); setTimeout(()=>f(false),ms); document.head.appendChild(s); }); }
+function loadCss(href){ const l=document.createElement("link"); l.rel="stylesheet"; l.href=href; document.head.appendChild(l); }
+async function tryKakao(){
+  if(ON_CLAUDE || !KEYS.KAKAO_JS) return false;
+  if(!(await loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KEYS.KAKAO_JS)}&libraries=services&autoload=false`))) return false;
+  if(!(window.kakao&&kakao.maps)) return false;
+  return new Promise(res=>{ try{ kakao.maps.load(()=>res(true)); }catch(e){ res(false); } setTimeout(()=>res(false),6000); });
+}
+async function tryLeaflet(){
+  if(ON_CLAUDE) return false;
+  loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
+  return (await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js")) && !!window.L;
+}
+let mapStarting=null, mapFailed=false, geocoder=null;
+function ensureMap(){
+  if(mapStarting) return mapStarting;
+  mapStarting=(async()=>{
+    const el=$("map");
+    if(await tryKakao()){
+      MAP.kind="kakao"; MAP.m=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(CAMPUS.lat,CAMPUS.lng),level:5});
+      MAP.m.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+      geocoder = WEB_ORIGIN ? new kakao.maps.services.Geocoder() : null;
+      kakao.maps.event.addListener(MAP.m,"click",e=>onMapClick({lat:e.latLng.getLat(),lng:e.latLng.getLng()}));
+      if(!(await kakaoTilesOk(el))){ el.innerHTML=""; MAP.kind=null; MAP.m=null; }
+    }
+    if(MAP.m){} else if(await tryLeaflet()){
+      MAP.kind="leaflet"; MAP.m=L.map(el,{zoomControl:true}).setView([CAMPUS.lat,CAMPUS.lng],15);
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{maxZoom:19,subdomains:"abcd",
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'}).addTo(MAP.m);
+      MAP.m.on("click",e=>onMapClick({lat:e.latlng.lat,lng:e.latlng.lng}));
+    } else { mapFailed=true; showGate(); return false; }
+    $("map-kind").textContent = MAP.kind==="kakao" ? (WEB_ORIGIN?"카카오맵":"카카오맵 · 장소 검색: "+searchMode()) : "OpenStreetMap 지도 (카카오맵을 불러오지 못해 대신 표시)";
+    drawBase(); return true;
+  })();
+  return mapStarting;
+}
+function showGate(){
+  const g=$("city-gate"); g.hidden=false;
+  g.innerHTML = `<b>이 화면에서는 지도·실시간을 쓸 수 없어요.</b><span>${ON_CLAUDE?"Claude에 올린 공유 페이지는 외부 지도와 실시간 정보를 막아요. 산업체 폴더의 <b>다빈치 버스.html</b>을 브라우저로 열어 주세요.":"인터넷 연결을 확인하세요."}</span>`;
+  $("plan-sec").classList.add("disabled");
+}
+/* 지도 그리기 공통 함수 */
+function mLabel(p, html, z=3, cls=""){
+  if(MAP.kind==="kakao"){ const o=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(p.lat,p.lng),content:html,yAnchor:cls==="center"?.5:1.15,zIndex:z}); o.setMap(MAP.m); return {remove:()=>o.setMap(null)}; }
+  const mk=L.marker([p.lat,p.lng],{icon:L.divIcon({html:`<div class="lf ${cls==="center"?"lf-c":""}">${html}</div>`,className:"",iconSize:[0,0]}),zIndexOffset:z*100,interactive:false}).addTo(MAP.m);
+  return {remove:()=>mk.remove()};
+}
+function mLine(pts, {color="#1B4FA8", weight=5, dash=false}={}){
+  if(MAP.kind==="kakao"){ const pl=new kakao.maps.Polyline({map:MAP.m,path:pts.map(p=>new kakao.maps.LatLng(p.lat,p.lng)),strokeWeight:weight,strokeColor:color,strokeOpacity:.9,strokeStyle:dash?"shortdash":"solid"}); return {remove:()=>pl.setMap(null)}; }
+  const pl=L.polyline(pts.map(p=>[p.lat,p.lng]),{color,weight,opacity:.9,dashArray:dash?"6 8":null}).addTo(MAP.m); return {remove:()=>pl.remove()};
+}
+function mFit(pts){
+  if(!pts.length) return;
+  if(MAP.kind==="kakao"){ const b=new kakao.maps.LatLngBounds(); pts.forEach(p=>b.extend(new kakao.maps.LatLng(p.lat,p.lng))); MAP.m.setBounds(b,50,40,50,40); }
+  else MAP.m.fitBounds(L.latLngBounds(pts.map(p=>[p.lat,p.lng])),{padding:[40,40]});
+}
+function mPopup(p, el){
+  if(MAP.kind==="kakao"){ const o=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(p.lat,p.lng),content:el,yAnchor:1.1,zIndex:9,clickable:true}); o.setMap(MAP.m); return {remove:()=>o.setMap(null)}; }
+  const pop=L.popup({closeButton:false,offset:[0,-4]}).setLatLng([p.lat,p.lng]).setContent(el).openOn(MAP.m); return {remove:()=>MAP.m.closePopup(pop)};
+}
+let overlays=[];
+function clearOverlays(){ overlays.forEach(o=>o.remove()); overlays=[]; }
+const tagHtml=(t,bg)=>`<div class="mtag" style="background:${bg}">${t}</div>`;
+const pin=(p,html,z)=>{ const o=mLabel(p,html,z); overlays.push(o); return o; };
+const line=(pts,opt)=>{ const o=mLine(pts,opt); overlays.push(o); return o; };
+function drawBase(){ drawPlaces(); }
+
+/* 장소 검색 · 주소 */
+async function searchPlaces(q){
+  if(MAP.kind==="kakao" && WEB_ORIGIN){
+    const r = await Promise.race([ new Promise(res=>{
+      try{ new kakao.maps.services.Places().keywordSearch(q,(d,st)=>res(st===kakao.maps.services.Status.OK ? d.slice(0,6).map(x=>({name:x.place_name,lat:+x.y,lng:+x.x,sub:(x.category_name||"").split(">").pop().trim()||x.road_address_name,dist:x.distance})) : []),
+        {location:new kakao.maps.LatLng(CAMPUS.lat,CAMPUS.lng)}); }catch(e){ res(null); } }), new Promise(res=>setTimeout(()=>res(null),5000)) ]);
+    if(r && r.length) return r;   // 실패(도메인 미등록 등)하면 아래 무료 검색으로
   }
+  // 키 없이: 정류장 이름 + OpenStreetMap 장소 검색(Photon)
+  const hits=stopMatches(q);
+  try{ const j=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${CAMPUS.lat}&lon=${CAMPUS.lng}&limit=6`).then(r=>r.json());
+    (j.features||[]).forEach(f=>{ const pp=f.properties||{}; hits.push({name:pp.name||q, lat:f.geometry.coordinates[1], lng:f.geometry.coordinates[0], sub:[pp.city||pp.county,pp.street].filter(Boolean).join(" ")}); }); }catch(e){}
+  return hits.slice(0,6);
 }
-function renderRoute() {
-  const { from, to, foot, car } = nav.res, box = $("#routeBox");
-  const card = (k, n, r, sub) => r ? `<button class="rc" data-mode="${k}" aria-pressed="${nav.mode === k}"><small>${n}</small><b>${sub[0]}</b><small>${sub[1]}</small></button>`
-    : `<div class="rc"><small>${n}</small><b>-</b><small>경로 없음</small></div>`;
-  box.innerHTML = `<div class="hint" style="margin-top:0">${esc(from.name)} → <b>${esc(to.name)}</b>${from.approx ? " · 출발지 좌표는 대략적인 값이에요" : ""}</div>
-    <div class="rcards">
-      ${card("foot", "도보", foot, foot ? [fmtMin(walkMin(foot.distance)), fmtDist(foot.distance) + " · 시간 추정"] : [])}
-      ${card("car", "택시", car, car ? [taxiFare(car.distance).toLocaleString("ko-KR") + "원", fmtDist(car.distance) + " · " + fmtMin(Math.max(1, Math.round(car.duration / 60))) + " · 요금 추정"] : [])}
-      <a class="rc" style="text-decoration:none;color:inherit" target="_blank" rel="noopener" href="${kmap("by/traffic", from.name, from.lat, from.lng)}/${encodeURIComponent(to.name)},${to.lat},${to.lng}"><small>대중교통</small><b>카카오맵 ↗</b><small>환승 경로 열기</small></a>
-    </div>
-    <div class="hint">택시 요금은 기본요금 4,800원 기준 추정치예요. 할증·통행료는 빠져 있어요. 도보 경로는 OpenStreetMap 기준이에요.</div>`;
-  drawRoute();
+async function placeName(p){
+  try{
+    if(geocoder) return await new Promise(res=>geocoder.coord2Address(p.lng,p.lat,(r,st)=>res(st===kakao.maps.services.Status.OK&&r[0]?(r[0].road_address?r[0].road_address.address_name:r[0].address.address_name):"지도에서 고른 곳")));
+    const j=await fetch(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lng}`).then(r=>r.json()); const pp=((j.features||[])[0]||{}).properties||{};
+    return pp.name || [pp.city,pp.street,pp.housenumber].filter(Boolean).join(" ") || "지도에서 고른 곳";
+  }catch(e){ return "지도에서 고른 곳"; }
 }
-async function drawRoute() {
-  const { from, to, foot, car } = nav.res, r = nav.mode === "foot" ? foot : car;
-  await mapInit().catch(() => {}); if (!MAPI) return;
-  mClear(); mLabel(from.lat, from.lng, "출발"); mLabel(to.lat, to.lng, "도착");
-  const pts = r ? r.geometry.coordinates.map(c => [c[1], c[0]]) : [[from.lat, from.lng], [to.lat, to.lng]];
-  mLine(pts, getComputedStyle(document.documentElement).getPropertyValue(nav.mode === "foot" ? "--route-foot" : "--route-car").trim() || "#4f8cff");
+async function regionOutside(p){
+  try{
+    if(geocoder) return await new Promise(res=>geocoder.coord2RegionCode(p.lng,p.lat,(r,st)=>res(st===kakao.maps.services.Status.OK ? !r.some(x=>(x.region_2depth_name||"").includes("안성")) : km(CAMPUS,p)>12)));
+  }catch(e){}
+  return km(CAMPUS,p)>12;
+}
+let clickPop=null, PIN_ORIGIN=null, curDest=null;
+async function onMapClick(p){
+  if(clickPop) clickPop.remove();
+  const name=await placeName(p);
+  const el=document.createElement("div"); el.className="mpop";
+  el.innerHTML=`<div>${esc(name)}</div><button type="button" data-mp="from">여기서 출발</button><button type="button" data-mp="to">여기로 도착</button>`;
+  el.addEventListener("click",ev=>{ const b=ev.target.closest("[data-mp]"); if(!b) return; ev.stopPropagation(); clickPop.remove();
+    if(b.dataset.mp==="from"){ PIN_ORIGIN={name:"지도에서 고른 곳",...p}; const o=$("from").querySelector('[value="pin"]'); o.hidden=false; o.textContent="지도에서 고른 곳: "+name; $("from").value="pin"; if(curDest) runPlan(curDest); }
+    else { curDest={name,...p}; $("dest").value=name; $("picks").innerHTML=""; runPlan(curDest); } });
+  clickPop=mPopup(p,el);
+}
+function drawEnds(o,d){ pin(o,tagHtml("출발","#13203A"),6); if(d) pin(d,tagHtml("도착","#C53030"),6); }
+
+/* 결과 */
+let OPTIONS=[], selOpt=0, lastOD=null, TR_MSG="";
+function legChip(l){
+  if(l.t==="walk") return `<span class="leg walk">도보 ${Math.round(l.min)}분</span>`;
+  if(l.t==="subway") return `<span class="leg" style="background:${l.color}">${esc(l.no)} ${l.min}분</span>`;
+  if(l.t==="bus") return `<span class="leg ${l.kind}">${esc(l.no)}번 ${l.min}분</span>`;
+  return `<span class="leg other">${esc(l.no)} ${l.min}분</span>`;
+}
+function firstBusInfo(o){
+  const b=o.legs.find(l=>l.t==="bus"); if(!b) return "";
+  const rt=b.rt; if(!rt) return o.est ? `<span class="tag-est">배차 간격 추정</span>` : "";
+  const soon = rt.m1<=3 ? `<span class="soon">곧 도착</span>` : `${Math.round(rt.m1)}분 후`;
+  return `<span class="rtline"><i class="dot on"></i>${esc(b.no)}번 ${soon}${rt.left1!=null?` · ${rt.left1}정류장 전`:""} ${crowdBadge(rt.crowd,rt.seat,b.no)}</span>`;
+}
+function renderOptions(){
+  const box=$("results"); if(!OPTIONS.length){ box.innerHTML=""; return; }
+  const tr=OPTIONS.filter(o=>o.kind==="transit"), other=OPTIONS.filter(o=>o.kind!=="transit");
+  let h=`<div class="res-group"><h3>대중교통 ${tr.length&&tr[0].est?'<span class="tag-est">추정 · 캠퍼스에서 한 번에 가는 버스만</span>':""}</h3>`;
+  if(!tr.length) h+=`<p class="meta">${esc(TR_MSG||"대중교통 경로를 찾지 못했어요.")}</p>`;
+  h+=tr.map(o=>{ const k=OPTIONS.indexOf(o);
+    return `<button class="res" type="button" data-opt="${k}" aria-pressed="${k===selOpt}"><span class="rank">${tr.indexOf(o)+1}</span>
+      <div class="body"><div class="legs">${o.legs.map(legChip).join('<span class="arr">›</span>')}</div>
+        <div class="sub">${[o.transfers>0?`환승 ${o.transfers}회`:"환승 없음", o.walk!=null?`도보 약 ${o.walk}분`:"", o.fare?won(o.fare):""].filter(Boolean).join(" · ")}</div>
+        <div class="sub">${firstBusInfo(o)} ${o.legs.filter(l=>l.t!=="walk").slice(0,1).map(l=>`${esc(l.from.name||"")} 승차`).join("")}</div></div>
+      <div class="tot"><b>${fmtDur(o.total)}</b></div></button>`; }).join("")+`</div>`;
+  const night=(()=>{ const hh=seoulNow().h; return hh>=22||hh<4; })();
+  h+=`<div class="res-group two">`+other.map(o=>{ const k=OPTIONS.indexOf(o);
+    if(o.kind==="taxi") return `<button class="res" type="button" data-opt="${k}" aria-pressed="${k===selOpt}"><span class="ico taxi">택시</span><div class="body"><div class="nm">택시</div><div class="sub">${fmtKm(o.m)} · ${o.outside?"시계외 할증 포함 · ":""}${night?"심야 할증 포함 · ":""}통행료 별도</div></div><div class="tot"><b>${won(o.fare)}</b><span>약 ${fmtDur(o.min)}</span></div></button>`;
+    if(o.kind==="walk") return `<button class="res" type="button" data-opt="${k}" aria-pressed="${k===selOpt}"><span class="ico walk">도보</span><div class="body"><div class="nm">걸어서</div><div class="sub">${fmtKm(o.m)}${o.m>8000?" · 걷기엔 먼 거리예요":""}</div></div><div class="tot"><b>${fmtDur(o.min)}</b></div></button>`;
+    return `<div class="res fail"><span class="ico">${o.kind==="taxiErr"?"택시":"도보"}</span><div class="body"><div class="nm">${o.kind==="taxiErr"?"택시":"걸어서"}</div><div class="sub">${esc(o.msg)}</div></div></div>`;
+  }).join("")+`</div>`;
+  if(lastOD){ const {origin,dest}=lastOD; h+=`<p class="meta">대중교통은 ${tr.length&&!tr[0].est?"ODsay 경로":"정류장 좌표로 계산한 추정"}이고, 택시 요금은 경기도 중형택시 요금(기본 4,800원) 기준 추정이에요. <a href="https://map.kakao.com/link/from/${encodeURIComponent(origin.name)},${origin.lat},${origin.lng}/to/${encodeURIComponent(dest.name)},${dest.lat},${dest.lng}" target="_blank" rel="noopener">카카오맵 길찾기로 비교 ↗</a></p>`; }
+  box.innerHTML=h;
+}
+async function drawOption(k){
+  if(!MAP.m || !lastOD) return; selOpt=k; clearOverlays();
+  const {origin,dest}=lastOD, o=OPTIONS[k], pts=[origin,dest];
+  drawEnds(origin,dest);
+  if(o && o.kind==="transit"){
+    o.legs.forEach(l=>{
+      if(l.t==="walk"){ line([l.from,l.to],{color:"#5A6680",weight:4,dash:true}); return; }
+      const color = l.t==="subway" ? l.color : l.t==="bus" ? ({dir:"#D23A30",blue:"#3A68C4",gen:"#1E8A50"}[l.kind]||"#1E8A50") : "#6D4BC8";
+      line(l.path,{color});
+      pin(l.from,tagHtml(esc(l.no),color),5); pts.push(...l.path);
+    });
+  } else if(o && (o.kind==="taxi"||o.kind==="walk")){
+    line(o.pts,{color:o.kind==="taxi"?"#E8A317":"#13203A",dash:o.kind==="walk"}); pts.push(...o.pts);
+  }
   mFit(pts);
+  document.querySelectorAll("[data-opt]").forEach(x=>x.setAttribute("aria-pressed",+x.dataset.opt===k));
 }
-
-/* ===== 11. 이벤트 ===== */
-document.addEventListener("click", e => {
-  const g = k => e.target.closest(`[data-${k}]`);
-  let x;
-  if ((x = g("screen"))) setScreen(x.dataset.screen);
-  else if ((x = g("filter"))) { ui.filter = x.dataset.filter; saveUi(); renderShuttle(); }
-  else if ((x = g("tab"))) { ui.tab = x.dataset.tab; saveUi(); renderShuttle(); }
-  else if ((x = g("day"))) { ui.day = x.dataset.day; renderShuttle(); }
-  else if ((x = g("copy"))) { const t = x.dataset.copy; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => { x.textContent = "복사됨"; setTimeout(() => x.textContent = "복사", 1200); }, () => prompt("길게 눌러 복사해요", t)); }
-  else if ((x = g("refresh"))) { e.preventDefault(); loadPlace($(`details.place[data-i="${x.dataset.refresh}"]`), true); }
-  else if ((x = g("pick"))) { computeRoute(lastResults[+x.dataset.pick]); }
-  else if ((x = g("mode"))) { nav.mode = x.dataset.mode; renderRoute(); }
-  else if ((x = g("quick"))) { $("#toQ").value = x.dataset.quick; doSearch(x.dataset.quick); }
+const ALIAS = { "안성터미널":"안성종합버스터미널", "안성종합터미널":"안성종합버스터미널", "강남역":"신분당선강남역", "평택역":"평택역.AKPLAZA", "평택터미널":"평택시외버스터미널(시내)", "수원터미널":"수원공용버스터미널(시외)", "야탑역":"야탑역.종합버스터미널(광역버스)", "동탄역":"동탄역(동측)", "범계역":"롯데백화점.범계역", "스타필드안성":"스타필드안성.용이동.삼천리가스", "지제역":"평택지제역" };
+function norm(s){ return s.replace(/\(.*?\)|[\s.·]/g,"").toLowerCase(); }
+function stopMatches(q){
+  const nq=norm(ALIAS[q.replace(/\s/g,"")]||q), S=LINE_DATA.S, hits={};
+  for(const id of Object.keys(S)){ const nm=norm(S[id][0]); if(S[id][3] && (nm.includes(nq) || (nq.length>=2 && nq.includes(nm) && nm.length>=3))){ const k=S[id][0]; if(!hits[k]) hits[k]={name:S[id][0],lat:S[id][1],lng:S[id][2],sub:"버스정류장"}; } }
+  return Object.values(hits).sort((a,b)=>(norm(b.name)===nq)-(norm(a.name)===nq) || a.name.length-b.name.length).slice(0,3);
+}
+async function getOrigin(){
+  const v=$("from").value;
+  if(v==="pin" && PIN_ORIGIN) return PIN_ORIGIN;
+  if(v!=="me") return ORIGINS[v]||ORIGINS.b801;
+  return new Promise(res=>{ if(!navigator.geolocation){ res(ORIGINS.b801); return; }
+    navigator.geolocation.getCurrentPosition(p=>res({name:"내 위치",lat:p.coords.latitude,lng:p.coords.longitude}),()=>res(ORIGINS.b801),{timeout:6000}); });
+}
+async function runPlan(dest){
+  curDest=dest; await ensureMap();
+  const origin=await getOrigin(); lastOD={origin,dest}; OPTIONS=[]; selOpt=0; TR_MSG="";
+  $("results").innerHTML=`<p class="meta">경로를 찾는 중…</p>`;
+  if(MAP.m){ clearOverlays(); drawEnds(origin,dest); mFit([origin,dest]); }
+  const tasks=[];
+  tasks.push((async()=>{
+    let tr=[];
+    if(!tr.length){ tr=estimateRoutes(origin,dest); if(!tr.length && !TR_MSG) TR_MSG="캠퍼스 근처에서 한 번에 가는 버스가 없어요. 환승이 필요하면 아래 ‘카카오맵 길찾기로 비교’를 눌러 보세요."; }
+    if(KEYS.DATA_GO_KR) await Promise.allSettled(tr.map(async o=>{
+      const b=o.legs.find(l=>l.t==="bus"); if(!b || b.rt) return; const no=String(b.no||"").split("·")[0];
+      const s=b.stopId&&LINE_DATA.S[b.stopId] ? LINE_DATA.S[b.stopId] : [b.from.name||"", b.from.lat, b.from.lng, b.arsId||""];
+      try{ const r=await arrivalsFor(s); const it=r.items.find(x=>x.route===no); if(it&&it.min1!=null) b.rt={m1:it.min1,left1:it.left1,crowd:it.crowd1,seat:it.seat1}; }catch(e){}
+    }));
+    tr.forEach(o=>o.kind="transit"); OPTIONS.unshift(...tr);
+  })());
+  tasks.push((async()=>{ try{ const r=await osrm("car",origin,dest); const out=await regionOutside(dest);
+      OPTIONS.push({kind:"taxi",m:r.m,min:r.s/60*1.15,pts:r.pts,outside:out,fare:taxiFare(r.m,out,seoulNow().h)}); }
+    catch(e){ OPTIONS.push({kind:"taxiErr",msg:"택시 경로를 계산하지 못했어요."}); } })());
+  tasks.push((async()=>{ try{ const r=await osrm("foot",origin,dest); OPTIONS.push({kind:"walk",m:r.m,min:r.m/1000/4.5*60,pts:r.pts}); }
+    catch(e){ OPTIONS.push({kind:"walkErr",msg:"도보 경로를 계산하지 못했어요."}); } })());
+  await Promise.allSettled(tasks);
+  const rank=o=>o.kind==="transit"?0:o.kind.startsWith("taxi")?1:2;
+  OPTIONS.sort((a,b)=>rank(a)-rank(b));
+  renderOptions(); drawOption(0);
+}
+let picks=[];
+$("plan-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const q=$("dest").value.trim(); if(!q) return;
+  await ensureMap(); if(mapFailed) return;
+  $("results").innerHTML=`<p class="meta">찾는 중…</p>`;
+  picks=await searchPlaces(q);
+  if(!picks.length){ $("picks").innerHTML=""; $("results").innerHTML=`<div class="card"><b>‘${esc(q)}’을(를) 찾지 못했어요.</b><p class="meta">${(MAP.kind==="kakao"&&WEB_ORIGIN)?"가게 이름과 지역을 같이 넣어 보세요. 예: 안성 국밥":"음식점까지 찾으려면 ‘API 키 설정’에 카카오 JavaScript 키를 넣고, 카카오에 등록한 웹 주소(GitHub Pages)로 여세요."}</p></div>`; return; }
+  $("picks").innerHTML=picks.map((p,i)=>`<button class="pick" type="button" data-pick="${i}" aria-pressed="${i===0}"><b>${esc(p.name)}</b><span>${esc(p.sub||"")}${p.dist?` · ${fmtKm(+p.dist)}`:""}</span></button>`).join("");
+  runPlan(picks[0]);
 });
-document.addEventListener("input", e => { if (e.target.id === "fromQ") nav.geo = null; });
-document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "toQ") doSearch(e.target.value); });
-$("#btnSearch").onclick = () => doSearch($("#toQ").value);
-$("#btnGeo").onclick = () => {
-  if (!navigator.geolocation) { $("#mapNote").textContent = "이 브라우저는 현재 위치를 지원하지 않아요."; return; }
-  navigator.geolocation.getCurrentPosition(
-    p => { nav.geo = { name: "현재 위치", lat: p.coords.latitude, lng: p.coords.longitude }; $("#fromQ").value = "현재 위치"; $("#mapNote").textContent = ""; },
-    () => { $("#mapNote").textContent = "현재 위치를 가져오지 못했어요. 브라우저의 위치 권한을 허용하거나 출발지를 직접 입력해요."; });
-};
+$("from").addEventListener("change",()=>{ if(curDest) runPlan(curDest); });
 
-/* ===== 12. API 키 설정 ===== */
-function renderKeyNote() { $("#keyNote").textContent = `공공데이터 오늘 호출 ${usage().n}회 / 하루 1,000회 한도예요.`; }
-$("#kakaoIn").value = KEYS.KAKAO_JS || ""; $("#dgIn").value = KEYS.DATA_GO_KR || "";
-document.querySelectorAll(".origin").forEach(o => o.textContent = location.origin);
-$("#keyBtn").onclick = () => { $("#keyPanel").hidden = !$("#keyPanel").hidden; };
-$("#keyShow").onclick = () => {
-  const show = $("#kakaoIn").type === "password";
-  $("#kakaoIn").type = $("#dgIn").type = show ? "text" : "password";
-  $("#keyShow").textContent = show ? "키 숨기기" : "키 보기"; $("#keyShow").setAttribute("aria-pressed", show);
-};
-const stat = (id, ok, msg) => { const e = $(id); e.className = "kstat " + (ok === null ? "" : ok ? "ok" : "bad"); e.textContent = msg; };
+/* ======================= 지난 배차 간격 ======================= */
+let hwWeeks=1, hwStop="34151";
+function planIv(no){ const id=Object.keys(LINE_DATA.L).find(k=>LINE_DATA.L[k].no===no); return id&&META[id]?META[id].iv:""; }
+function hwColor(v){ if(v==null) return ""; const t=Math.max(0,Math.min(1,(v-5)/55)); return `background:hsl(${140-140*t} 60% 50% / .28)`; }
+function headways(weeks){
+  const DAY=86400000, n=seoulNow(), today=Date.parse(n.ymd+"T00:00:00+09:00");
+  const from=today-7*weeks*DAY+DAY, to=today-7*(weeks-1)*DAY+DAY; // 1주 전 = 오늘 포함 최근 7일
+  const log=jget("dvb-log",[]), ev={}, days=new Set(); let since=null;
+  log.forEach(([ts,stop,route])=>{ since = since==null||ts<since ? ts : since; if(ts<from||ts>=to) return;
+    const d=new Date(ts+9*3600000), day=d.toISOString().slice(0,10); days.add(day);
+    (ev[stop+"|"+route+"|"+day]=ev[stop+"|"+route+"|"+day]||[]).push(d.getUTCHours()*60+d.getUTCMinutes()); });
+  const out={};
+  Object.entries(ev).forEach(([k,mins])=>{ const [stop,route]=k.split("|"); mins.sort((a,b)=>a-b);
+    for(let i=1;i<mins.length;i++){ const gap=mins[i]-mins[i-1]; if(gap<2||gap>240) continue;
+      const t=((out[stop]=out[stop]||{})[route]=out[stop][route]||{hours:{},all:[]}); (t.hours[Math.floor(mins[i-1]/60)]=t.hours[Math.floor(mins[i-1]/60)]||[]).push(gap); t.all.push(gap); } });
+  Object.values(out).forEach(rs=>Object.values(rs).forEach(t=>{ Object.keys(t.hours).forEach(h=>{ const v=t.hours[h]; t.hours[h]=v.reduce((a,b)=>a+b,0)/v.length; }); t.avg=t.all.reduce((a,b)=>a+b,0)/t.all.length; t.n=t.all.length+1; }));
+  const f=ts=>{ const d=new Date(ts+9*3600000); return `${d.getUTCMonth()+1}/${d.getUTCDate()}`; };
+  return { range:`${f(from)} ~ ${f(to-DAY)}`, days:days.size, since, data:out };
+}
+function loadHeadways(){
+  const body=$("hw-body");
+  document.querySelectorAll("[data-hw]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.hw===hwWeeks));
+  document.querySelectorAll("[data-hs]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.hs===hwStop));
+  const j=headways(hwWeeks);
+  $("hw-range").textContent=`${j.range} · 기록된 날 ${j.days}일`;
+  const data=j.data[hwStop]||{}, routes=Object.keys(data).sort((a,b)=>data[b].n-data[a].n);
+  if(!routes.length){
+    const s=j.since?new Date(j.since+9*3600000).toISOString().slice(0,10):null;
+    body.innerHTML=`<div class="card"><b>이 기간에는 기록이 없어요.</b><p class="meta">${s?`기록은 ${s}부터 있어요. `:""}이 파일이 브라우저에 열려 있는 동안 3분마다 롯데캐슬 정류장 도착을 이 브라우저에 기록해요. 과거 기록은 공공 API로 받을 수 없어서 지금부터 쌓이고, 창을 닫아 둔 시간은 비어요.</p></div>`; return; }
+  const hours=[]; for(let h=5;h<=23;h++) hours.push(h);
+  body.innerHTML=`<div class="tbl-wrap card" style="padding:0"><table class="hw-table"><tr><th>노선</th><th>평균</th><th>계획</th>${hours.map(h=>`<th>${h}시</th>`).join("")}</tr>
+    ${routes.map(r=>{ const d=data[r]; return `<tr><td><span class="ln ${lineKind(r)}">${esc(r)}</span></td><td class="mono"><b>${d.avg.toFixed(1)}분</b></td><td class="meta">${esc(planIv(r)||"-")}</td>
+      ${hours.map(h=>{ const v=d.hours[h]; return `<td class="c" style="${hwColor(v)}">${v!=null?Math.round(v):""}</td>`; }).join("")}</tr>`; }).join("")}</table></div>
+  <div class="hw-legend"><span><i style="${hwColor(5)}"></i>짧음</span><span><i style="${hwColor(30)}"></i>보통</span><span><i style="${hwColor(60)}"></i>긺</span><span>칸 숫자는 그 시간대 평균 배차(분) · 실제 도착 기록 기준</span></div>`;
+}
 
-// 저장된 키가 실제로 동작하는지 한 번씩 호출해 보고 결과를 보여준다
-async function testKakao() {
-  if (!KEYS.KAKAO_JS) return stat("#kakaoStat", null, "키가 없어요. 지도는 OpenStreetMap, 검색은 Photon으로 동작해요.");
-  stat("#kakaoStat", null, "카카오 연결을 확인하는 중이에요…");
-  try {
-    await loadKakao();
-    const r = await kakaoSearch("중앙대학교");
-    stat("#kakaoStat", true, `✓ 연결됐어요. 카카오맵 검색 ${r.length}건을 받았어요.`);
-  } catch (e) {
-    stat("#kakaoStat", false, `✗ 연결하지 못했어요. JavaScript 키가 맞는지, 'JavaScript SDK 도메인'에 ${location.origin} 이 등록됐는지, '카카오맵 › 사용 설정'이 ON인지 확인해요. 고친 뒤에는 '저장하고 다시 불러오기'를 눌러요.`);
+/* ======================= API 키 설정 ======================= */
+function openKeys(open){
+  const p=$("key-panel"); p.hidden=!open; $("key-open").setAttribute("aria-expanded",open);
+  if(open){ $("k-kakao").value=KEYS.KAKAO_JS; $("k-data").value=KEYS.DATA_GO_KR; $("k-kakao").focus(); }
+}
+$("key-open").addEventListener("click",()=>openKeys($("key-panel").hidden));
+$("key-form").addEventListener("submit",e=>{
+  e.preventDefault();
+  const k={KAKAO_JS:$("k-kakao").value.trim(), DATA_GO_KR:$("k-data").value.trim()};
+  try{ localStorage.setItem("dvb-keys",JSON.stringify(k)); localStorage.removeItem("dvb-dgcache"); }catch(err){ $("key-msg").textContent="이 브라우저에서는 저장할 수 없어요(사생활 보호 모드 등)."; return; }
+  $("key-msg").textContent="저장했어요. 다시 불러올게요."; setTimeout(()=>location.reload(),400);
+});
+$("key-show").addEventListener("click",e=>{ const t=$("k-kakao").type==="password"?"text":"password"; $("k-kakao").type=t; $("k-data").type=t; e.target.textContent=t==="text"?"키 숨기기":"키 보기"; });
+$("key-clear").addEventListener("click",()=>{ try{ localStorage.removeItem("dvb-keys"); localStorage.removeItem("dvb-dgcache"); }catch(e){} $("k-kakao").value=""; $("k-data").value=""; $("key-msg").textContent="이 브라우저에서 키를 지웠어요. 다시 불러올게요."; setTimeout(()=>location.reload(),400); });
+
+/* ======================= 공통 갱신 ======================= */
+function renderClock(n){
+  $("clk").textContent = `${pad(n.h)}:${pad(n.mi)}`;
+  $("dt").textContent = `${n.mo}월 ${n.d}일 (${WD[n.wd]})`;
+  const dt=dayType(n); let msg="";
+  if(mode==="shuttle"){
+    if(HOLIDAYS[n.ymd]) msg=`오늘은 ${HOLIDAYS[n.ymd]}이에요. 셔틀 운행 여부는 학교 공지를 확인하세요.`;
+    else if(dt.run && dt.kind==="fr") msg="금요일이에요. 통학버스 상행 15:40은 없고, 하행 7:55는 1대만 운행해요.";
+    else if(!dt.run && dt.why==="운행 기간 아님") msg="셔틀 운행 기간(2026. 9. 1. ~ 12. 21.)이 아니에요.";
   }
+  $("notice").hidden=!msg; $("notice").textContent=msg;
 }
-async function testDg() {
-  if (!KEYS.DATA_GO_KR) return stat("#dgStat", null, "키가 없어요. 곧 도착 정보는 볼 수 없어요.");
-  stat("#dgStat", null, "공공데이터 연결을 확인하는 중이에요…");
-  try {
-    const list = await dg("busstationservice/v2/getBusStationListv2", { keyword: "중앙대입구" });
-    stat("#dgStat", true, list.length ? `✓ 연결됐어요. '중앙대입구' 정류소 ${list.length}곳을 찾았어요.` : "✓ 키는 통과했는데 '중앙대입구' 검색 결과가 비어 있어요. 응답 형식이 달라졌을 수 있어요.");
-  } catch (e) {
-    const m = String(e.message);
-    stat("#dgStat", false, m === "BADFORMAT" ? "✗ 응답을 읽지 못했어요. 키를 잘못 붙여넣었거나, 두 API(버스도착정보·정류소 조회) 활용신청이 아직 승인·반영되지 않았을 수 있어요."
-      : m.startsWith("API:") ? "✗ 공공데이터 서버가 오류를 돌려줬어요: " + m.slice(4) : "✗ 네트워크 오류예요. 연결을 확인하고 '연결 확인'을 다시 눌러요.");
-  }
+let lastKey="";
+function tick(){
+  const n=seoulNow(); renderClock(n);
+  if(mode==="shuttle"){ renderShuttleBoard(n); const k=n.ymd+n.min+activeTab+pickDay; if(k!==lastKey){ renderPanel(n); lastKey=k; } }
+  else { if(RT.state!=="on") renderCityBoard(); else renderCityBoard(); }
 }
-const testKeys = () => Promise.all([testKakao(), testDg()]);
-$("#keyTest").onclick = testKeys;
-$("#keySave").onclick = () => {
-  const k = {}, a = $("#kakaoIn").value.trim(), b = $("#dgIn").value.trim();
-  if (a) k.KAKAO_JS = a; if (b) k.DATA_GO_KR = b;
-  store.set("dvb-keys", k); store.set("dvb-stations", {});
-  try { sessionStorage.setItem("dvb-test", "1"); } catch (e) {}
-  location.reload(); // 카카오 SDK는 키를 바꾸면 새로 불러와야 해서 페이지를 다시 열어요
-};
-$("#keyClear").onclick = () => { store.set("dvb-keys", {}); store.set("dvb-stations", {}); location.reload(); };
-try { if (sessionStorage.getItem("dvb-test")) { sessionStorage.removeItem("dvb-test"); $("#keyPanel").hidden = false; testKeys(); } } catch (e) {}
 
-/* ===== 13. 공통 갱신 ===== */
-function tick() {
-  const n = seoulNow();
-  $("#clockT").textContent = `${pad(n.hh)}:${pad(n.mm)}`;
-  $("#clockD").textContent = `${+n.ymd.slice(5, 7)}월 ${+n.ymd.slice(8)}일 (${WD[n.dow]})`;
-  renderShuttle();
-}
-$("#quick").innerHTML = QUICK.map(q => `<button class="pill" data-quick="${q}">${q}</button>`).join("");
-renderGuide(); renderCityBoard(); renderKeyNote(); renderProvider(); setScreen(ui.screen); tick();
-setInterval(() => { if (document.visibilityState === "visible") tick(); }, 20000);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") tick(); });
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,a"); if(!t) return;
+  if(t.dataset.mode){ setMode(t.dataset.mode); return; }
+  if(t.dataset.sf){ sf=t.dataset.sf; store.set("dvb-sf",sf); document.querySelectorAll("[data-sf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.sf===sf)); tick(); }
+  if(t.dataset.place){ selectPlace(t.dataset.place); }
+  if(t.id==="rt-refresh"){ manualRefresh(t); }
+  if(t.dataset.focusno){ ensureMap().then(()=>focusNo(t.dataset.focusno)); }
+  if(t.dataset.tab){ activeTab=t.dataset.tab; pickDay=null; store.set("dvb-tab",activeTab); renderTabs(); lastKey=""; tick(); }
+  if(t.dataset.d){ pickDay=t.dataset.d; lastKey=""; tick(); }
+  if(t.dataset.pick){ document.querySelectorAll("[data-pick]").forEach(b=>b.setAttribute("aria-pressed",b===t)); runPlan(picks[+t.dataset.pick]); }
+  if(t.dataset.opt){ drawOption(+t.dataset.opt); }
+  if(t.dataset.focus){ ensureMap().then(()=>focusStop(t.dataset.focus)); }
+  if(t.dataset.hw){ hwWeeks=+t.dataset.hw; loadHeadways(); }
+  if(t.dataset.hs){ hwStop=t.dataset.hs; loadHeadways(); }
+  if(t.classList.contains("copy")){ const v=t.dataset.c, done=()=>{t.textContent="복사됨"; setTimeout(()=>t.textContent="복사",1500)};
+    try{ navigator.clipboard.writeText(v).then(done,()=>sel(t)); }catch(_){ sel(t); } }
+});
+function sel(btn){ const s=btn.previousElementSibling; const r=document.createRange(); r.selectNodeContents(s); const g=getSelection(); g.removeAllRanges(); g.addRange(r); }
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && mode==="city") refreshRealtime(); });
+
+document.querySelectorAll("[data-sf]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.sf===sf));
+renderPlaceChips();
+renderTabs(); renderShuttleStops(); renderLineList();
+setMode(mode);
+setInterval(tick, 15000);
+setInterval(()=>{ if(mode==="city") refreshRealtime(); }, REFRESH_SEC*1000);
+setInterval(logLoop, 180000); setTimeout(logLoop, 4000);
 </script>
+
 </body>
 </html>
