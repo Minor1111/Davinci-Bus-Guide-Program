@@ -347,7 +347,7 @@ footer{font-size:12px;color:var(--muted)}
     </section>
   </div>
 
-  <footer id="foot">셔틀 시간표: 「2026-2학기 다빈치캠퍼스 노선별 버스 운행 시간표(통학버스 등)」. 시내·직행·시외버스 노선과 정류장: 카카오맵 버스 정보(2026. 10. 6. 조회). 실시간: 경기도 버스도착정보·정류소 조회(사용자 키). 지도·장소 검색: 카카오맵(사용자 키), 키가 없으면 OpenStreetMap·CARTO·Photon. 도보·택시 경로: OpenStreetMap(FOSSGIS). 학교 공지가 바뀌면 공지가 우선이에요.</footer>
+  <footer id="foot">셔틀 시간표: 「2026-2학기 다빈치캠퍼스 노선별 버스 운행 시간표(통학버스 등)」. 시내·직행·시외버스 노선과 정류장: 카카오맵 버스 정보(2026. 10. 6. 조회). 실시간: 경기도 버스도착정보·정류소 조회(사용자 키). 지도·장소 검색: 카카오맵(사용자 키), 키가 없으면 OpenStreetMap·Photon. 도보·택시 경로: OpenStreetMap(FOSSGIS). 학교 공지가 바뀌면 공지가 우선이에요.</footer>
 </div>
 
 <script>
@@ -780,13 +780,16 @@ function renderCityBoard(){
     : RT.state==="err" ? `실시간을 받지 못해 시간표 기준으로 보여드려요. 아래 ‘실시간 연결 상태’를 확인하세요.` : RT.msg ? "일부 방향 정보를 못 불러왔어요: "+esc(RT.msg) : "";
 }
 function renderDiag(){
-  if(!KEYS.DATA_GO_KR) return;
+  if(!KEYS.DATA_GO_KR && !KEYS.KAKAO_JS) return;
   $("diag").hidden=false;
-  $("diag-body").innerHTML = `<ul>${Object.keys(DG_API).map(k=>{ const v=DG_STATUS[k];
-    return `<li><span class="st ${v.state}">${v.state==="ok"?"사용 가능":v.state==="fail"?"안 됨":"아직 안 씀"}</span><span>${esc(DG_NAME[k])}${v.msg?" — "+esc(v.msg):""} <span class="meta">(오늘 ${usedCalls(k)}회)</span></span></li>`; }).join("")}</ul>
+  const kst = KAKAO.state==="ok" ? ["ok","사용 가능",""] : KAKAO.state==="idle" ? ["","아직 안 씀","지도를 열면 확인해요"] : KAKAO.state==="nokey" ? ["","키 없음",""] : ["fail","안 됨",KAKAO_WHY[KAKAO.state]||""];
+  const kakaoRow = KEYS.KAKAO_JS ? `<li><span class="st ${kst[0]}">${kst[1]}</span><span>카카오맵 JavaScript SDK${kst[2]?" — "+esc(kst[2]):""}${KAKAO.state==="notiles"&&KAKAO.hosts.length?` <span class="meta">(받은 이미지 주소: ${esc(KAKAO.hosts.join(", "))})</span>`:""}</span></li>` : "";
+  const dgRows = KEYS.DATA_GO_KR ? Object.keys(DG_API).map(k=>{ const v=DG_STATUS[k];
+    return `<li><span class="st ${v.state}">${v.state==="ok"?"사용 가능":v.state==="fail"?"안 됨":"아직 안 씀"}</span><span>${esc(DG_NAME[k])}${v.msg?" — "+esc(v.msg):""} <span class="meta">(오늘 ${usedCalls(k)}회)</span></span></li>`; }).join("") : "";
+  $("diag-body").innerHTML = `<ul>${kakaoRow}${dgRows}</ul>
     ${LOOKUP_LOG.length?`<p class="meta" style="margin-top:6px"><b>정류장 찾기</b><br>${LOOKUP_LOG.map(esc).join("<br>")}</p>`:""}
     ${RT.msg?`<p class="meta"><b>마지막 오류</b> ${esc(RT.msg)}</p>`:""}
-    <p class="meta" style="margin-top:6px">지도: ${MAP.kind==="kakao"?"카카오맵":MAP.kind==="leaflet"?"OpenStreetMap(카카오맵을 못 불러와 대신 표시)":"불러오는 중"} · 장소 검색: ${searchMode()}</p>`;
+    <p class="meta" style="margin-top:6px">지도: ${MAP.kind==="kakao"?"카카오맵":MAP.kind==="leaflet"?"OpenStreetMap"+(KAKAO.state==="nokey"?"":"(카카오맵을 못 불러와 대신 표시)"):"불러오는 중"} · 장소 검색: ${searchMode()}</p>`;
 }
 function dirByNo(no){ for(const p of PLACES){ const d=p.dirs.find(d=>d.no===no); if(d) return [p,d]; } return [null,null]; }
 function focusNo(no){
@@ -877,21 +880,38 @@ const won = n => n==null ? "" : n.toLocaleString("ko-KR")+"원";
 const fmtDur = m => m>=60 ? `${Math.floor(m/60)}시간 ${Math.round(m%60)}분` : `${Math.round(m)}분`;
 const fmtKm = m => m>=1000 ? (m/1000).toFixed(1)+"km" : Math.round(m)+"m";
 
-/* 지도: 웹 주소(http/https)로 열면 카카오맵, 파일로 열면 OpenStreetMap 기반 지도 */
+/* 지도: 카카오맵(키가 있고 정상일 때) → 아니면 OpenStreetMap 기반 지도.
+   카카오를 못 쓴 이유는 KAKAO에, 마지막 장소 검색이 어디서 왔는지는 SEARCH에 남겨 화면에 보여줘요. */
 const WEB_ORIGIN = /^https?:$/.test(location.protocol);   // 파일로 열면 false
+const KAKAO = { state: KEYS.KAKAO_JS ? "idle" : "nokey", hosts: [] };   // nokey | idle | sdkfail | initfail | notiles | ok
+const SEARCH = { via: "", why: "" };                                      // via: kakao | photon
+const KAKAO_WHY = {
+  sdkfail: "카카오 지도 SDK를 불러오지 못했어요. JavaScript 키가 맞는지(REST 키는 안 돼요), 광고 차단 프로그램이 막지 않는지 확인하세요.",
+  initfail: "카카오 지도를 시작하지 못했어요. 인터넷 연결을 확인하고 다시 열어 보세요.",
+  notiles: `카카오 지도는 불러왔지만 지도 타일을 받지 못했어요. 카카오 개발자 콘솔에서 ‘JavaScript SDK 도메인’에 ${location.origin} 이 등록됐는지, ‘카카오맵 › 사용 설정’이 ON인지 확인하세요.` };
+// 카카오 지도 타일은 mapN.daumcdn.net 계열이에요('kakaocdn'은 SDK 파일 주소라 타일이 아니에요). 로고·UI 이미지는 제외해요.
+const isKakaoTile = src => /daumcdn\.net\//.test(src) && !/daumcdn\.net\/(?:localimg|mapjsapi|roadviewjscore|dmaps)\//.test(src);
 function kakaoTilesOk(el){ return new Promise(res=>{ let n=0; const iv=setInterval(()=>{ n++;
-  const ok=[...el.querySelectorAll("img")].some(i=>/kakaocdn/.test(i.src) && i.complete && i.naturalWidth>0);
-  if(ok||n>=16){ clearInterval(iv); res(ok); } },250); }); }
-function searchMode(){ return MAP.kind==="kakao"&&WEB_ORIGIN ? "카카오맵 장소 검색" : "정류장 이름 + OpenStreetMap 장소 검색(Photon)"; }
+  const imgs=[...el.querySelectorAll("img")], ok=imgs.some(i=>isKakaoTile(i.src) && i.complete && i.naturalWidth>0);
+  if(ok||n>=24){ clearInterval(iv); KAKAO.hosts=[...new Set(imgs.map(i=>{ try{ return new URL(i.src).host; }catch(e){ return ""; } }).filter(Boolean))]; res(ok); } },250); }); }
+function searchMode(){ return SEARCH.via==="kakao" ? "카카오맵 장소 검색" : "정류장 이름 + OpenStreetMap 장소 검색(Photon)"+(SEARCH.why?" — "+SEARCH.why:""); }
+function updateMapNote(){
+  const base = MAP.kind==="kakao" ? "카카오맵" : KAKAO.state==="nokey" ? "OpenStreetMap 지도 (카카오 키를 넣으면 카카오맵과 음식점·가게 검색을 쓸 수 있어요)"
+    : "OpenStreetMap 지도 (카카오맵을 쓰지 못해 대신 표시)";
+  const why = KAKAO_WHY[KAKAO.state] ? " — "+KAKAO_WHY[KAKAO.state] : "";
+  const srch = SEARCH.via ? " · 장소 검색: "+(SEARCH.via==="kakao"?"카카오맵":"OpenStreetMap(Photon)")+(SEARCH.why?" — "+SEARCH.why:"") : "";
+  $("map-kind").textContent = base+why+srch;
+}
 const MAP = { kind:null, m:null, items:[], clickFn:null };
 function loadScript(src, ms=8000){ return new Promise(res=>{ const s=document.createElement("script"); s.src=src; let d=false; const f=v=>{ if(!d){ d=true; res(v); } };
   s.onload=()=>f(true); s.onerror=()=>f(false); setTimeout(()=>f(false),ms); document.head.appendChild(s); }); }
 function loadCss(href){ const l=document.createElement("link"); l.rel="stylesheet"; l.href=href; document.head.appendChild(l); }
 async function tryKakao(){
-  if(!KEYS.KAKAO_JS) return false;
-  if(!(await loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KEYS.KAKAO_JS)}&libraries=services&autoload=false`))) return false;
-  if(!(window.kakao&&kakao.maps)) return false;
-  return new Promise(res=>{ try{ kakao.maps.load(()=>res(true)); }catch(e){ res(false); } setTimeout(()=>res(false),6000); });
+  if(!KEYS.KAKAO_JS){ KAKAO.state="nokey"; return false; }
+  if(!(await loadScript(`https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(KEYS.KAKAO_JS)}&libraries=services&autoload=false`)) || !(window.kakao&&kakao.maps)){ KAKAO.state="sdkfail"; return false; }
+  const ok=await new Promise(res=>{ try{ kakao.maps.load(()=>res(true)); }catch(e){ res(false); } setTimeout(()=>res(false),6000); });
+  if(!ok) KAKAO.state="initfail";
+  return ok;
 }
 async function tryLeaflet(){
   loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
@@ -907,15 +927,17 @@ function ensureMap(){
       MAP.m.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
       geocoder = WEB_ORIGIN ? new kakao.maps.services.Geocoder() : null;
       kakao.maps.event.addListener(MAP.m,"click",e=>onMapClick({lat:e.latLng.getLat(),lng:e.latLng.getLng()}));
-      if(!(await kakaoTilesOk(el))){ el.innerHTML=""; MAP.kind=null; MAP.m=null; }
+      if(await kakaoTilesOk(el)) KAKAO.state="ok";
+      else { KAKAO.state="notiles"; el.innerHTML=""; MAP.kind=null; MAP.m=null; }
     }
     if(MAP.m){} else if(await tryLeaflet()){
       MAP.kind="leaflet"; MAP.m=L.map(el,{zoomControl:true}).setView([CAMPUS.lat,CAMPUS.lng],15);
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{maxZoom:19,subdomains:"abcd",
-        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'}).addTo(MAP.m);
+      // CARTO 타일은 이제 API 키를 요구해서('API KEY REQUIRED' 이미지) OpenStreetMap 표준 타일을 써요. 가볍게 쓰고 저작권 표시를 지우지 않아요.
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(MAP.m);
       MAP.m.on("click",e=>onMapClick({lat:e.latlng.lat,lng:e.latlng.lng}));
     } else { mapFailed=true; showGate(); return false; }
-    $("map-kind").textContent = MAP.kind==="kakao" ? (WEB_ORIGIN?"카카오맵":"카카오맵 · 장소 검색: "+searchMode()) : "OpenStreetMap 지도 (카카오맵을 불러오지 못해 대신 표시)";
+    updateMapNote(); renderDiag();
     drawBase(); return true;
   })();
   return mapStarting;
@@ -953,22 +975,29 @@ function drawBase(){ drawPlaces(); }
 
 /* 장소 검색 · 주소 */
 async function searchPlaces(q){
+  SEARCH.why = KAKAO.state==="nokey" ? "카카오 키를 넣으면 음식점·가게까지 찾아요" : "카카오맵을 쓰지 못해 대신 찾았어요";
   if(MAP.kind==="kakao" && WEB_ORIGIN){
+    const S=kakao.maps.services.Status;
     const r = await Promise.race([ new Promise(res=>{
-      try{ new kakao.maps.services.Places().keywordSearch(q,(d,st)=>res(st===kakao.maps.services.Status.OK ? d.slice(0,6).map(x=>({name:x.place_name,lat:+x.y,lng:+x.x,sub:(x.category_name||"").split(">").pop().trim()||x.road_address_name,dist:x.distance})) : []),
+      try{ new kakao.maps.services.Places().keywordSearch(q,(d,st)=>res({st, list: st===S.OK ? d.slice(0,6).map(x=>({name:x.place_name,lat:+x.y,lng:+x.x,sub:(x.category_name||"").split(">").pop().trim()||x.road_address_name,dist:x.distance})) : []}),
         {location:new kakao.maps.LatLng(CAMPUS.lat,CAMPUS.lng)}); }catch(e){ res(null); } }), new Promise(res=>setTimeout(()=>res(null),5000)) ]);
-    if(r && r.length) return r;   // 실패(도메인 미등록 등)하면 아래 무료 검색으로
+    if(r && r.list.length){ SEARCH.via="kakao"; SEARCH.why=""; updateMapNote(); renderDiag(); return r.list; }
+    // 실패하면 아래 무료 검색으로. 이유를 남겨요.
+    SEARCH.why = !r ? "카카오 장소 검색이 응답하지 않아 대신 찾았어요"
+      : r.st===S.ZERO_RESULT ? "카카오에서 결과가 없어 대신 찾았어요"
+      : "카카오 장소 검색이 오류를 돌려줬어요. ‘JavaScript SDK 도메인’ 등록과 ‘카카오맵 › 사용 설정’을 확인하세요";
   }
-  // 키 없이: 정류장 이름 + OpenStreetMap 장소 검색(Photon)
+  // 키 없이: 정류장 이름 + OpenStreetMap 장소 검색(Photon). lang=default가 없으면 브라우저 언어(영어)에 맞춰 주소가 영어로 와요.
   const hits=stopMatches(q);
-  try{ const j=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${CAMPUS.lat}&lon=${CAMPUS.lng}&limit=6`).then(r=>r.json());
+  try{ const j=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${CAMPUS.lat}&lon=${CAMPUS.lng}&limit=6&lang=default`).then(r=>r.json());
     (j.features||[]).forEach(f=>{ const pp=f.properties||{}; hits.push({name:pp.name||q, lat:f.geometry.coordinates[1], lng:f.geometry.coordinates[0], sub:[pp.city||pp.county,pp.street].filter(Boolean).join(" ")}); }); }catch(e){}
+  SEARCH.via="photon"; updateMapNote(); renderDiag();
   return hits.slice(0,6);
 }
 async function placeName(p){
   try{
     if(geocoder) return await new Promise(res=>geocoder.coord2Address(p.lng,p.lat,(r,st)=>res(st===kakao.maps.services.Status.OK&&r[0]?(r[0].road_address?r[0].road_address.address_name:r[0].address.address_name):"지도에서 고른 곳")));
-    const j=await fetch(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lng}`).then(r=>r.json()); const pp=((j.features||[])[0]||{}).properties||{};
+    const j=await fetch(`https://photon.komoot.io/reverse?lat=${p.lat}&lon=${p.lng}&lang=default`).then(r=>r.json()); const pp=((j.features||[])[0]||{}).properties||{};
     return pp.name || [pp.city,pp.street,pp.housenumber].filter(Boolean).join(" ") || "지도에서 고른 곳";
   }catch(e){ return "지도에서 고른 곳"; }
 }
