@@ -831,35 +831,72 @@ const P = id => { const s=LINE_DATA.S[id]; return s ? {lat:s[1],lng:s[2]} : null
 function rtFor(stopId, no){ const s=LINE_DATA.S[stopId]; const d=s&&RT.data[s[3]]; if(!d) return null; const it=d.items.find(x=>x.route===no); if(!it) return null;
   const age=(Date.now()-d.at)/60000; return { m1: it.min1!=null?Math.max(0,it.min1-age):null, m2: it.min2!=null?Math.max(0,it.min2-age):null, left1:it.left1, crowd:it.crowd1, seat:it.seat1 }; }
 
-/* 대중교통 추정: 캠퍼스 근처 정류장에서 환승 없이 가는 노선 (정류장 좌표 기반) */
+/* 대중교통 추정: 정류장 좌표로 계산한 직행 + 환승 1회 경로 중 빠른 5개.
+   환승은 300m 안에서 갈아타는 것만 보고, 갈아탈 버스의 대기는 배차 간격의 절반으로 추정해요. */
+const TR_MAX=5, XFER_KM=0.3, XFER_PENALTY=3;
 function estimateRoutes(origin, dest){
   const n = seoulNow(), S = LINE_DATA.S, L = LINE_DATA.L;
-  const near = new Set(Object.keys(S).filter(id=>S[id][3] && km(origin,P(id))<=1.6));
-  const opts=[];
-  for(const lid of Object.keys(L)){
-    const no=L[lid].no, stops=L[lid].stops; if(!inService(lid,n.min)) continue;
+  const lids = Object.keys(L).filter(lid=>inService(lid,n.min));
+  const waitIv = lid => Math.min(ivAvg(META[lid]&&META[lid].iv)/2, 90);
+  /* 각 노선의 k번째 정류장에서 타면 가장 빨리 도착지 근처에 내리는 곳 */
+  const best = {};
+  lids.forEach(lid=>{ const st=L[lid].stops, arr=[];
+    for(let k=0;k<st.length;k++){
+      const pk=P(st[k]); if(!pk||!S[st[k]][3]){ arr.push(null); continue; }
+      let ride=0, prev=pk, bj=null;
+      for(let j=k+1;j<st.length&&j<k+160;j++){ const pj=P(st[j]); if(!pj) continue; ride+=segMin(prev,pj); prev=pj;
+        if(!S[st[j]][3]) continue; if(st[j]===st[k]) break;
+        const w2=walkMin(km(pj,dest)); if(w2<=30 && (!bj||ride+w2<bj.cost)) bj={j,ride:Math.round(ride),w2,cost:ride+w2}; }
+      arr.push(bj); }
+    best[lid]=arr; });
+  /* 환승할 수 있는 다른 노선 정류장 (정류장별로 한 번만 계산) */
+  const xcache={};
+  const xferTo = sid => xcache[sid] || (xcache[sid]=(()=>{ const ps=P(sid), out=[];
+    lids.forEach(b=>L[b].stops.forEach((y,k)=>{ if(!best[b][k]) return; const d=y===sid?0:km(ps,P(y)); if(d<=XFER_KM) out.push({b,k,y,d}); }));
+    return out; })());
+  const near = Object.keys(S).filter(id=>S[id][3] && km(origin,P(id))<=1.6);
+  const nearSet = new Set(near), direct=[], xfer=[];
+  lids.forEach(lid=>{
+    const no=L[lid].no, stops=L[lid].stops;
     stops.forEach((sid,i)=>{
-      if(!near.has(sid)) return;
-      const w1=walkMin(km(origin,P(sid))); let ride=0, prev=P(sid), bj=null;
+      if(!nearSet.has(sid)) return;
+      const w1=walkMin(km(origin,P(sid)));
+      const rt=rtFor(sid,no); let wait, live=false, rtInfo=null;
+      if(rt && rt.m1!=null && rt.m1>=w1){ wait=rt.m1; live=true; rtInfo=rt; } else wait = w1 + waitIv(lid);
+      const base=Math.max(w1,wait), w={lid,no,sid,i,w1,wait:Math.round(Math.max(0,wait-w1)),live,rtInfo};
+      const d=best[lid][i]; if(d) direct.push({a:w,rideA:d.ride,sid2:stops[d.j],jA:d.j,w2:d.w2,total:Math.round(base+d.ride+d.w2)});
+      let ride=0, prev=P(sid);
       for(let j=i+1;j<stops.length&&j<i+160;j++){ const pj=P(stops[j]); if(!pj) continue; ride+=segMin(prev,pj); prev=pj;
         if(!S[stops[j]][3]) continue; if(stops[j]===sid) break;
-        const w2=walkMin(km(pj,dest)); if(!bj||ride+w2<bj.cost) bj={j,sid2:stops[j],ride:Math.round(ride),w2,cost:ride+w2}; }
-      if(!bj||bj.w2>30) return;
-      const rt=rtFor(sid,no); let wait, live=false, rtInfo=null;
-      if(rt && rt.m1!=null && rt.m1>=w1){ wait=rt.m1; live=true; rtInfo=rt; }
-      else wait = w1 + Math.min(ivAvg(META[lid]&&META[lid].iv)/2, 90);
-      opts.push({lid,no,sid,i,j:bj.j,sid2:bj.sid2,w1,wait:Math.round(Math.max(0,wait-w1)),ride:bj.ride,w2:bj.w2,total:Math.round(Math.max(w1,wait)+bj.ride+bj.w2),live,rtInfo});
+        let bx=null;
+        xferTo(stops[j]).forEach(c=>{ if(L[c.b].no===no) return; const e=best[c.b][c.k]; if(!e) return;
+          const wT=c.d?walkMin(c.d):0, tot=base+ride+wT+waitIv(c.b)+XFER_PENALTY+e.cost;
+          if(!bx||tot<bx.tot) bx={tot,c,e,wT}; });
+        if(bx) xfer.push({a:w,rideA:Math.round(ride),jA:j,sidX:stops[j],...bx,total:Math.round(bx.tot)}); }
     });
-  }
-  opts.sort((a,b)=>a.total-b.total);
-  const seen=new Set(), out=[]; for(const o of opts){ if(seen.has(o.no)) continue; seen.add(o.no); out.push(o); if(out.length===3) break; }
-  return out.map(o=>{
-    const kind=(META[o.lid]||{}).kind||"gen", S2=LINE_DATA.S;
-    const stops=LINE_DATA.L[o.lid].stops.slice(o.i,o.j+1).map(P).filter(Boolean);
-    return { est:true, total:o.total, fare:null, walk:o.w1+o.w2, transfers:0,
-      legs:[ {t:"walk", min:o.w1, from:origin, to:P(o.sid)},
-             {t:"bus", kind, no:o.no, min:o.ride, wait:o.wait, live:o.live, rt:o.rtInfo, from:{...P(o.sid),name:S2[o.sid][0]}, to:{...P(o.sid2),name:S2[o.sid2][0]}, path:stops, stopId:o.sid},
-             {t:"walk", min:o.w2, from:P(o.sid2), to:dest} ] };
+  });
+  /* 같은 노선(번호) 조합은 가장 빠른 것만, 직행이 이미 더 빠른 노선으로 갈아타는 경로는 뺌 */
+  const bestDirect={}; direct.forEach(o=>{ if(!(o.a.no in bestDirect)||o.total<bestDirect[o.a.no]) bestDirect[o.a.no]=o.total; });
+  const cand=[...direct.map(o=>({...o,key:o.a.no})), ...xfer.filter(o=>!(o.a.no in bestDirect)||o.total<bestDirect[o.a.no])
+    .map(o=>({...o,key:o.a.no+">"+L[o.c.b].no}))].sort((a,b)=>a.total-b.total);
+  const seen=new Set(), firstCnt={}, picked=[];
+  for(const o of cand){ if(seen.has(o.key)) continue; if((firstCnt[o.a.no]||0)>=2) continue;
+    seen.add(o.key); firstCnt[o.a.no]=(firstCnt[o.a.no]||0)+1; picked.push(o); if(picked.length===TR_MAX) break; }
+  const kindOf = lid => (META[lid]||{}).kind||"gen";
+  const stopPt = id => ({...P(id),name:S[id][0]});
+  return picked.map(o=>{
+    const a=o.a, A=L[a.lid].stops, sidEnd=o.sid2||o.sidX;
+    const legs=[ {t:"walk", min:a.w1, from:origin, to:P(a.sid)},
+      {t:"bus", kind:kindOf(a.lid), no:a.no, min:o.rideA, wait:a.wait, live:a.live, rt:a.rtInfo, from:stopPt(a.sid), to:stopPt(sidEnd), path:A.slice(a.i,o.jA+1).map(P).filter(Boolean), stopId:a.sid} ];
+    let walk=a.w1, transfers=0;
+    if(o.c){
+      const B=o.c.b, Bs=L[B].stops, wT=o.wT;
+      if(o.c.d>0) legs.push({t:"walk", min:wT, from:P(sidEnd), to:P(o.c.y)});
+      legs.push({t:"bus", kind:kindOf(B), no:L[B].no, min:o.e.ride, wait:Math.round(waitIv(B)), live:false, rt:null, from:stopPt(o.c.y), to:stopPt(Bs[o.e.j]), path:Bs.slice(o.c.k,o.e.j+1).map(P).filter(Boolean), stopId:o.c.y});
+      legs.push({t:"walk", min:o.e.w2, from:P(Bs[o.e.j]), to:dest});
+      walk+=(o.c.d>0?wT:0)+o.e.w2; transfers=1;
+    } else { legs.push({t:"walk", min:o.w2, from:P(sidEnd), to:dest}); walk+=o.w2; }
+    return { est:true, total:o.total, fare:null, walk, transfers, legs };
   });
 }
 
@@ -1045,7 +1082,7 @@ function firstBusInfo(o){
 function renderOptions(){
   const box=$("results"); if(!OPTIONS.length){ box.innerHTML=""; return; }
   const tr=OPTIONS.filter(o=>o.kind==="transit"), other=OPTIONS.filter(o=>o.kind!=="transit");
-  let h=`<div class="res-group"><h3>대중교통 ${tr.length&&tr[0].est?'<span class="tag-est">추정 · 캠퍼스에서 한 번에 가는 버스만</span>':""}</h3>`;
+  let h=`<div class="res-group"><h3>대중교통 ${tr.length&&tr[0].est?'<span class="tag-est">추정 · 환승 1회까지</span>':""}</h3>`;
   if(!tr.length) h+=`<p class="meta">${esc(TR_MSG||"대중교통 경로를 찾지 못했어요.")}</p>`;
   h+=tr.map(o=>{ const k=OPTIONS.indexOf(o);
     return `<button class="res" type="button" data-opt="${k}" aria-pressed="${k===selOpt}"><span class="rank">${tr.indexOf(o)+1}</span>
@@ -1101,7 +1138,7 @@ async function runPlan(dest){
   const tasks=[];
   tasks.push((async()=>{
     let tr=[];
-    if(!tr.length){ tr=estimateRoutes(origin,dest); if(!tr.length && !TR_MSG) TR_MSG="캠퍼스 근처에서 한 번에 가는 버스가 없어요. 환승이 필요하면 아래 ‘카카오맵 길찾기로 비교’를 눌러 보세요."; }
+    if(!tr.length){ tr=estimateRoutes(origin,dest); if(!tr.length && !TR_MSG) TR_MSG="지금 운행하는 버스로 갈 수 있는 경로를 찾지 못했어요(환승은 1회까지 봐요). 아래 ‘카카오맵 길찾기로 비교’를 눌러 보세요."; }
     if(KEYS.DATA_GO_KR) await Promise.allSettled(tr.map(async o=>{
       const b=o.legs.find(l=>l.t==="bus"); if(!b || b.rt) return; const no=String(b.no||"").split("·")[0];
       const s=b.stopId&&LINE_DATA.S[b.stopId] ? LINE_DATA.S[b.stopId] : [b.from.name||"", b.from.lat, b.from.lng, b.arsId||""];
